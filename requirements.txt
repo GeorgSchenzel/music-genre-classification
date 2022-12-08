@@ -1,4 +1,6 @@
 numpy
 matplotlib
 pandas
+mutagen
+
 -e ../spotdj

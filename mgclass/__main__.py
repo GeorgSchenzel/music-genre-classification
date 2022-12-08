@@ -1,5 +1,5 @@
 import argparse
-from mgclass import dataset_analyzer
+from mgclass import datat_analyzer, data_downloader
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -9,15 +9,27 @@ def create_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(metavar="command", required=True)
 
-    add_some_subparser(subparsers)
+    add_data_downloader_subparser(subparsers)
+    add_data_analyzer_subparser(subparsers)
 
     return parser
 
 
-def add_some_subparser(subparsers):
+def add_data_downloader_subparser(subparsers):
+    parser = subparsers.add_parser("download", help="download raw data")
+
+    parser.set_defaults(func=data_downloader.main)
+    parser.add_argument("path", help="the directory to store the raw data in")
+    parser.add_argument(
+        "playlists_file",
+        help="A file containing the playlists to download, must be a .yaml with urls in a list",
+    )
+
+
+def add_data_analyzer_subparser(subparsers):
     parser = subparsers.add_parser("analyze", help="analyze raw data")
 
-    parser.set_defaults(func=dataset_analyzer.main)
+    parser.set_defaults(func=datat_analyzer.main)
     parser.add_argument("path", help="the path to the 'spotdj.json' file")
 
 
