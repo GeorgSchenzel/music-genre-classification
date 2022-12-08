@@ -1,10 +1,13 @@
 import argparse
-from mgclass import some_module
+from mgclass import dataset_analyzer
 
 
 def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="A nontrivial modular command")
-    subparsers = parser.add_subparsers(help="sub-command help")
+    parser = argparse.ArgumentParser(
+        prog="python -m mgclass,",
+        description="A full pipeline for music genre classification",
+    )
+    subparsers = parser.add_subparsers(metavar="command", required=True)
 
     add_some_subparser(subparsers)
 
@@ -12,10 +15,10 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def add_some_subparser(subparsers):
-    parser = subparsers.add_parser("something", help="Do something")
+    parser = subparsers.add_parser("analyze", help="analyze raw data")
 
-    parser.set_defaults(func=some_module.main)
-    parser.add_argument("path", help="The path to the thing")
+    parser.set_defaults(func=dataset_analyzer.main)
+    parser.add_argument("path", help="the path to the 'spotdj.json' file")
 
 
 if __name__ == "__main__":
