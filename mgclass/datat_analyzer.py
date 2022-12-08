@@ -77,5 +77,6 @@ class DatatAnalyzer:
         df = pd.Series(data).value_counts(sort=True)
         return df.head(10)
 
-def main(args):
+
+async def main(args):
     DatatAnalyzer(Path(args.path))

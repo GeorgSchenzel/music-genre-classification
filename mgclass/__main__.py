@@ -1,4 +1,6 @@
 import argparse
+import asyncio
+
 from mgclass import datat_analyzer, data_downloader
 
 
@@ -36,4 +38,4 @@ def add_data_analyzer_subparser(subparsers):
 if __name__ == "__main__":
     args = create_parser().parse_args()
 
-    args.func(args)
+    asyncio.run(args.func(args))
