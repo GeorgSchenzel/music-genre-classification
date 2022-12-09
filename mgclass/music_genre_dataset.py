@@ -4,13 +4,19 @@ from typing import List
 
 import pandas as pd
 from torch.utils.data import Dataset
-import torchaudio
 import mutagen
+import torchaudio
+from tqdm import tqdm
 
 
 class MusicGenreDataset(Dataset):
     def __init__(
-        self, data_dir: Path, transform=None, target_transform=None, num_classes=10
+        self,
+        data_dir: Path,
+        transform=None,
+        target_transform=None,
+        file_transform=None,
+        num_classes=10,
     ):
         self.data_dir = data_dir
 
@@ -19,6 +25,7 @@ class MusicGenreDataset(Dataset):
 
         self.transform = transform
         self.target_transform = target_transform
+        self.file_transform = file_transform
         self.num_classes = num_classes
 
         self.genres = self.aggregate_best_genres()
@@ -30,10 +37,17 @@ class MusicGenreDataset(Dataset):
 
         genre_to_label = {genre: i for i, genre in enumerate(self.genres)}
 
-        for datapoint in self.spotdj_data.values():
+        for datapoint in tqdm(self.spotdj_data.values(), desc="Creating Dataset"):
             try:
                 song_file = self.data_dir / datapoint["filename"]
-                mutagen_file = mutagen.File(song_file, easy=True)
+                original_file = song_file
+
+                if self.file_transform is not None:
+                    song_file = self.file_transform(song_file)
+
+                # we need to look into the original mp3 for the metadata
+                # somehow mutagen can't read wav metadata
+                mutagen_file = mutagen.File(original_file, easy=True)
 
                 if "genre" not in mutagen_file or len(mutagen_file["genre"]) == 0:
                     continue
@@ -76,12 +90,12 @@ class MusicGenreDataset(Dataset):
     def __getitem__(self, idx):
         waveform, sample_rate = torchaudio.load(self.files[idx])
 
-        tensor = waveform
+        data = waveform
         label = self.labels[idx]
 
         if self.transform:
-            tensor = self.transform(tensor)
+            data = self.transform(data)
         if self.target_transform:
             label = self.target_transform(label)
 
-        return tensor, label
+        return data, label

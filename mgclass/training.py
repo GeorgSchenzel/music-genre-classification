@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -7,16 +8,16 @@ import torch
 import torchvision.transforms as transforms
 import torchaudio.transforms as T
 import torch.optim as optim
-
+from torchmetrics import Accuracy
 
 from mgclass.music_genre_dataset import MusicGenreDataset
+from mgclass.timer import Timer
 
 
 async def main(args):
 
     num_classes = 10
     sample_rate = 44100
-
     # Dataset
 
     mel_spectrogram = T.MelSpectrogram(
@@ -33,15 +34,32 @@ async def main(args):
         mel_scale="htk",
     )
     t = nn.Sequential(transforms.RandomCrop((1, 15 * sample_rate)), mel_spectrogram)
-    dataset = MusicGenreDataset(
-        data_dir=Path("/home/georg/Music/ADL/"), transform=t, num_classes=num_classes
-    )
+
+    def select_file(original: Path):
+
+        new = original.parent / "wav_16k" / original.with_suffix(".wav").name
+
+        return new
+
+    with Timer("Dataset creation"):
+        dataset = MusicGenreDataset(
+            data_dir=Path("/home/georg/Music/ADL/"),
+            transform=t,
+            file_transform=select_file,
+            num_classes=num_classes,
+        )
 
     train_size = int(0.8 * len(dataset))
-    test_size = len(dataset) - train_size
-    train_dataset, test_dataset = torch.utils.data.random_split(
-        dataset, [train_size, test_size]
+    val_size = (len(dataset) - train_size) // 2
+    test_size = len(dataset) - train_size - val_size
+    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(
+        dataset, [train_size, val_size, test_size]
     )
+
+    print(f"Total Size: {len(dataset)}")
+    print(f"Train Size: {len(train_dataset)}")
+    print(f"Val Size: {len(test_dataset)}")
+    print(f"Test Size: {len(test_dataset)}")
 
     # Model
 
@@ -57,11 +75,9 @@ async def main(args):
         nn.Softmax(dim=1),
     )
 
-    print(model)
-
     # Move to Device (preferably GPU)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(device)
+    print(f"Using {device}\n")
 
     model.to(device)
 
@@ -71,10 +87,13 @@ async def main(args):
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=32, shuffle=True, num_workers=8
+        train_dataset, batch_size=16, shuffle=True, num_workers=8
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=16, shuffle=False, num_workers=8
     )
     test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=32, shuffle=False, num_workers=8
+        test_dataset, batch_size=16, shuffle=False, num_workers=8
     )
 
     # Train

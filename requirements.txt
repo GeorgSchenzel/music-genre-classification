@@ -5,6 +5,7 @@ mutagen
 torch
 torchvision
 torchaudio
+torchmetrics
 librosa
 
 -e ../spotdj
