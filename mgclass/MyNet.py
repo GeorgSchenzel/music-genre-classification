@@ -43,4 +43,3 @@ class MyNet(nn.Module):
 
         output = F.softmax(x, dim=1)
         return output
-

@@ -2,7 +2,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from torchvision import models
 import torch.nn as nn
 import torch
 import torchvision.transforms as transforms
@@ -10,8 +9,6 @@ import torchaudio.transforms as T
 import torch.optim as optim
 from torchmetrics import Accuracy
 
-from mgclass.MyNet import MyNet
-from mgclass.Net import Net
 from mgclass.ResNet import ResNet
 from mgclass.music_genre_dataset import MusicGenreDataset
 from mgclass.timer import Timer
@@ -67,9 +64,7 @@ async def main(args):
         mel_scale="htk",
     )
 
-    random_crop = transforms.RandomCrop(
-        (n_mels, data_shape[1])
-    )
+    random_crop = transforms.RandomCrop((n_mels, data_shape[1]))
 
     def select_file(original: Path):
         new = original.parent / "wav_16k" / original.with_suffix(".wav").name
@@ -104,7 +99,11 @@ async def main(args):
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, prefetch_factor=8
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=8,
+        prefetch_factor=8,
     )
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=batch_size, shuffle=False, num_workers=8
