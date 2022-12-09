@@ -7,12 +7,15 @@ from torch.utils.data import Dataset
 import mutagen
 import torchaudio
 from tqdm import tqdm
+import os
+import platform
 
 
 class MusicGenreDataset(Dataset):
     def __init__(
         self,
         data_dir: Path,
+        preprocess=None,
         transform=None,
         target_transform=None,
         file_transform=None,
@@ -23,16 +26,17 @@ class MusicGenreDataset(Dataset):
         with open(data_dir / "spotdj.json", "r") as f:
             self.spotdj_data = json.load(f).get("songs")
 
+        self.preprocess = preprocess
         self.transform = transform
         self.target_transform = target_transform
         self.file_transform = file_transform
         self.num_classes = num_classes
 
         self.genres = self.aggregate_best_genres()
-        self.files, self.labels = self.create_dataset()
+        self.data, self.labels = self.create_dataset()
 
     def create_dataset(self) -> (List[Path], List[int]):
-        files = []
+        data = []
         labels = []
 
         genre_to_label = {genre: i for i, genre in enumerate(self.genres)}
@@ -57,12 +61,18 @@ class MusicGenreDataset(Dataset):
                     continue
 
                 labels.append(genre_to_label[genre])
-                files.append(song_file)
+
+                d, sample_rate = torchaudio.load(song_file)
+
+                if self.preprocess:
+                    d = self.preprocess(d)
+
+                data.append(d)
 
             except FileNotFoundError:
                 pass
 
-        return files, labels
+        return data, labels
 
     def aggregate_best_genres(self) -> List[str]:
         spotify_genres = []
@@ -88,9 +98,7 @@ class MusicGenreDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        waveform, sample_rate = torchaudio.load(self.files[idx])
-
-        data = waveform
+        data = self.data[idx]
         label = self.labels[idx]
 
         if self.transform:
@@ -99,3 +107,16 @@ class MusicGenreDataset(Dataset):
             label = self.target_transform(label)
 
         return data, label
+
+    @staticmethod
+    def ensure_enough_memory():
+
+        if platform.system() != "Linux":
+            return
+
+        free_memory = int(os.popen("free -m").readlines()[1].split()[-1])
+
+        if free_memory < 500:
+            raise MemoryError(
+                "Aborting. Less than 500mb available memory left on device. "
+            )

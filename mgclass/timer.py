@@ -11,7 +11,7 @@ class Timer:
 
     label: str
 
-    def __init__(self, label: str):
+    def __init__(self, label: str = ""):
         self._start_time = None
         self.label = label
 
@@ -22,8 +22,9 @@ class Timer:
             raise TimerError(f"Timer is running. Use .stop() to stop it")
 
         self._start_time = time.perf_counter()
+        return self
 
-    def stop(self):
+    def stop(self, prnt=True):
         """Stop the timer, and report the elapsed time"""
 
         if self._start_time is None:
@@ -32,7 +33,9 @@ class Timer:
         elapsed_time = time.perf_counter() - self._start_time
         self._start_time = None
 
-        print(f"{self.label} finished in: {elapsed_time:0.4f} seconds")
+        if prnt:
+            print(f"{self.label} finished in: {elapsed_time:0.4f} seconds")
+        return elapsed_time
 
     def __enter__(self):
         """Start a new timer as a context manager"""

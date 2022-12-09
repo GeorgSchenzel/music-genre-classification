@@ -7,5 +7,6 @@ torchvision
 torchaudio
 torchmetrics
 librosa
+psutil
 
 -e ../spotdj

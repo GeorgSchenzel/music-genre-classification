@@ -17,26 +17,37 @@ from mgclass.timer import Timer
 async def main(args):
 
     num_classes = 10
-    sample_rate = 44100
+    sample_rate = 16000
+    win_length = 2048
+    hop_size = 512
+    n_mels = 96
+    crop_length_seconds = 15
     # Dataset
 
+    """
+    win_length defines the width of each chunk in terms of samples
+    
+    the duration of each chunk is win_length / sampling_rate
+    the number of chunks is #total_frames / hop_length
+    the overlap is win_length - hop_length / win_length 
+    """
     mel_spectrogram = T.MelSpectrogram(
         sample_rate=sample_rate,
-        n_fft=1024,
-        win_length=512,
-        hop_length=512,
+        n_fft=win_length,
+        win_length=win_length,
+        hop_length=hop_size,
         center=True,
         pad_mode="reflect",
         power=2.0,
         norm="slaney",
         onesided=True,
-        n_mels=96,
+        n_mels=n_mels,
         mel_scale="htk",
     )
-    t = nn.Sequential(transforms.RandomCrop((1, 15 * sample_rate)), mel_spectrogram)
+
+    random_crop = transforms.RandomCrop((n_mels, int(crop_length_seconds * sample_rate / hop_size)))
 
     def select_file(original: Path):
-
         new = original.parent / "wav_16k" / original.with_suffix(".wav").name
 
         return new
@@ -44,7 +55,8 @@ async def main(args):
     with Timer("Dataset creation"):
         dataset = MusicGenreDataset(
             data_dir=Path("/home/georg/Music/ADL/"),
-            transform=t,
+            preprocess=mel_spectrogram,
+            transform=random_crop,
             file_transform=select_file,
             num_classes=num_classes,
         )
@@ -60,6 +72,7 @@ async def main(args):
     print(f"Train Size: {len(train_dataset)}")
     print(f"Val Size: {len(test_dataset)}")
     print(f"Test Size: {len(test_dataset)}")
+    print(f"Genres: {dataset.genres}")
 
     # Model
 
@@ -87,7 +100,7 @@ async def main(args):
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=16, shuffle=True, num_workers=8
+        train_dataset, batch_size=16, shuffle=True, num_workers=8, prefetch_factor=8
     )
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=16, shuffle=False, num_workers=8
@@ -106,6 +119,8 @@ async def main(args):
     sys.stdout.flush()
     with Timer("Training"):
         for epoch in range(epochs):
+            epoch_timer = Timer().start()
+
             batch_losses = []
 
             for data, label in train_loader:
@@ -143,7 +158,7 @@ async def main(args):
 
             # console output
             print(
-                f"Epoch {epoch:3d}/{epochs}, Loss: {mean:2.3f} +- {std:1.4f}, Accuracy: {acc_val.compute():3.3f}"
+                f"Epoch {epoch:3d}/{epochs}, Loss: {mean:2.3f} +- {std:1.4f}, Accuracy: {acc_val.compute():3.3f}, in {epoch_timer.stop(False):2.2f}s"
             )
 
     for data, label in test_loader:
