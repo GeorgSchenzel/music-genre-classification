@@ -98,42 +98,60 @@ async def main(args):
 
     # Train
 
-    epochs = 2
-    for epoch in range(epochs):
-        batch_losses = []
-        for data, label in train_loader:
-            # Move to device
-            data = data.to(device)
-            label = label.to(device)
+    acc_val = Accuracy("multiclass", num_classes=num_classes).to(device)
+    acc_test = Accuracy("multiclass", num_classes=num_classes).to(device)
 
-            model.train(True)
-            model.zero_grad()
+    epochs = 100
+    print(f"Starting training for {epochs} epochs\n")
+    sys.stdout.flush()
+    with Timer("Training"):
+        for epoch in range(epochs):
+            batch_losses = []
 
-            # Forward pass
-            outputs = model.forward(data)
-            loss = loss_fn(outputs, label)
+            for data, label in train_loader:
+                # Move to device
+                data = data.to(device)
+                label = label.to(device)
 
-            # Backward pass
-            loss.backward()
-            optimizer.step()
+                model.train(True)
+                model.zero_grad()
 
-            model.train(False)
-            batch_losses.append(loss.item())
+                # Forward pass
+                outputs = model.forward(data)
+                loss = loss_fn(outputs, label)
 
-        batch_losses = np.array(batch_losses)
-        mean = round(np.mean(batch_losses), 3)
-        std = round(np.std(batch_losses), 4)
+                # Backward pass
+                loss.backward()
+                optimizer.step()
 
-        # console output
-        print(
-            "epoch "
-            + str(epoch)
-            + "\n"
-            + "train loss: "
-            + str(mean)
-            + " +- "
-            + str(std)
-            + "\n"
-        )
+                model.train(False)
+                batch_losses.append(loss.item())
 
-    print("Finished Training")
+            batch_losses = np.array(batch_losses)
+            mean = round(np.mean(batch_losses), 3)
+            std = round(np.std(batch_losses), 4)
+
+            # validation
+
+            for data, label in val_loader:
+                # Move to device
+                data = data.to(device)
+                label = label.to(device)
+
+                pred = model(data)
+                acc_val.update(pred, label)
+
+            # console output
+            print(
+                f"Epoch {epoch:3d}/{epochs}, Loss: {mean:2.3f} +- {std:1.4f}, Accuracy: {acc_val.compute():3.3f}"
+            )
+
+    for data, label in test_loader:
+        # Move to device
+        data = data.to(device)
+        label = label.to(device)
+
+        pred = model(data)
+        acc_test.update(pred, label)
+
+    print(f"Test Accuracy: {acc_test.compute()}")
