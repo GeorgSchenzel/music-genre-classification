@@ -1,7 +1,7 @@
 import argparse
 import asyncio
 
-from mgclass import datat_analyzer, data_downloader
+from mgclass import data_downloader, datat_analyzer, training
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -13,6 +13,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     add_data_downloader_subparser(subparsers)
     add_data_analyzer_subparser(subparsers)
+    add_dataset_generator_subparser(subparsers)
 
     return parser
 
@@ -26,6 +27,12 @@ def add_data_downloader_subparser(subparsers):
         "playlists_file",
         help="A file containing the playlists to download, must be a .yaml with urls in a list",
     )
+
+
+def add_dataset_generator_subparser(subparsers):
+    parser = subparsers.add_parser("train", help="train a model")
+
+    parser.set_defaults(func=training.main)
 
 
 def add_data_analyzer_subparser(subparsers):

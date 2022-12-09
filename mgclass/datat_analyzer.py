@@ -6,6 +6,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import mutagen
 
+
 class DatatAnalyzer:
     def __init__(self, path: Path):
 
@@ -66,7 +67,7 @@ class DatatAnalyzer:
         ax = df.plot(kind="bar", rot=45 if rot else 0)
 
         if rot:
-            ax.set_xticklabels(ax.get_xticklabels(), ha='right')
+            ax.set_xticklabels(ax.get_xticklabels(), ha="right")
 
         plt.title(title)
         plt.tight_layout()

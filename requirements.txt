@@ -2,5 +2,9 @@ numpy
 matplotlib
 pandas
 mutagen
+torch
+torchvision
+torchaudio
+librosa
 
 -e ../spotdj
