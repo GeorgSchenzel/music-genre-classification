@@ -10,18 +10,35 @@ import torchaudio.transforms as T
 import torch.optim as optim
 from torchmetrics import Accuracy
 
+from mgclass.MyNet import MyNet
+from mgclass.Net import Net
+from mgclass.ResNet import ResNet
 from mgclass.music_genre_dataset import MusicGenreDataset
 from mgclass.timer import Timer
+from torchinfo import summary
 
 
 async def main(args):
+    batch_size = 16
+    data_shape = (128, 256)
 
     num_classes = 10
     sample_rate = 16000
     win_length = 2048
     hop_size = 512
-    n_mels = 96
-    crop_length_seconds = 15
+    n_mels = data_shape[0]
+
+    # Model
+
+    model = ResNet(num_classes)
+    summary(model, input_size=(batch_size, 1) + data_shape)
+
+    # Move to Device (preferably GPU)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using {device}\n")
+
+    model.to(device)
+
     # Dataset
 
     """
@@ -29,7 +46,12 @@ async def main(args):
     
     the duration of each chunk is win_length / sampling_rate
     the number of chunks is #total_frames / hop_length
-    the overlap is win_length - hop_length / win_length 
+    the overlap is win_length - hop_length / win_length
+    
+    thus we can calculate the receptive field of the first layer by:
+        seconds = kernel_size * hop_size / sample_rate
+    
+    or a single bin covers hop_size / sample_rate seconds of out data
     """
     mel_spectrogram = T.MelSpectrogram(
         sample_rate=sample_rate,
@@ -45,7 +67,9 @@ async def main(args):
         mel_scale="htk",
     )
 
-    random_crop = transforms.RandomCrop((n_mels, int(crop_length_seconds * sample_rate / hop_size)))
+    random_crop = transforms.RandomCrop(
+        (n_mels, data_shape[1])
+    )
 
     def select_file(original: Path):
         new = original.parent / "wav_16k" / original.with_suffix(".wav").name
@@ -74,39 +98,19 @@ async def main(args):
     print(f"Test Size: {len(test_dataset)}")
     print(f"Genres: {dataset.genres}")
 
-    # Model
-
-    model = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
-
-    model.conv1 = nn.Conv2d(1, 64, (64, 64), (2, 2), (3, 3), bias=False)
-
-    model.fc = nn.Sequential(
-        nn.Linear(model.fc.in_features, 128),
-        nn.ReLU(),
-        nn.Dropout(0.2),
-        nn.Linear(128, num_classes),
-        nn.Softmax(dim=1),
-    )
-
-    # Move to Device (preferably GPU)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using {device}\n")
-
-    model.to(device)
-
     # Setup
 
     loss_fn = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=16, shuffle=True, num_workers=8, prefetch_factor=8
+        train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, prefetch_factor=8
     )
     val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=16, shuffle=False, num_workers=8
+        val_dataset, batch_size=batch_size, shuffle=False, num_workers=8
     )
     test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=16, shuffle=False, num_workers=8
+        test_dataset, batch_size=batch_size, shuffle=False, num_workers=8
     )
 
     # Train
