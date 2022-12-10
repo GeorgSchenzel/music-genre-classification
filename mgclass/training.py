@@ -6,19 +6,14 @@ import torch
 import torchvision.transforms as transforms
 import torchaudio.transforms as T
 import torch.optim as optim
+from torch.utils.data import DataLoader
 from torchmetrics import Accuracy
 
 from mgclass.ResNet import ResNet
-from mgclass.music_genre_dataset import MusicGenreDataset
+from mgclass.music_genre_dataset import MusicGenreDataset, RepeatedLoader
 from mgclass.timer import Timer
 from matplotlib import pyplot as plt
 from tqdm import tqdm
-
-
-def repeat(loader, times):
-    for _ in range(times):
-        for x in loader:
-            yield x
 
 
 def some_experiment():
@@ -86,13 +81,12 @@ class TrainingRun:
         model,
         epochs=100,
         batch_size=16,
-        repeat_count=1,
+        repeat_count=10,
     ):
         self.dataset = dataset
         self.model = model
         self.epochs = epochs
         self.batch_size = batch_size
-        # TODO: move into loader
         self.repeat_count = repeat_count
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -138,22 +132,27 @@ class TrainingRun:
             self.dataset, [train_size, val_size, test_size]
         )
 
-        self.train_loader = torch.utils.data.DataLoader(
+        self.train_loader = DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
             shuffle=True,
             num_workers=8,
             prefetch_factor=4,
             pin_memory=True,
-            persistent_workers=True,
+            persistent_workers=True
         )
 
-        self.val_loader = torch.utils.data.DataLoader(
-            self.val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=8
+        self.val_loader = DataLoader(
+            self.val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=8,
         )
-        self.test_loader = torch.utils.data.DataLoader(
+
+        self.test_loader = DataLoader(
             self.test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=8
         )
+
+        self.train_loader = RepeatedLoader(self.train_loader, self.repeat_count)
+        self.train_loader = RepeatedLoader(self.test_loader, self.repeat_count)
+        self.val_loader = RepeatedLoader(self.val_loader, self.repeat_count)
 
     def _train(self):
         num_classes = self.dataset.num_classes
@@ -172,10 +171,10 @@ class TrainingRun:
                 pbar = tqdm(
                     desc=f"Epoch {epoch:3d}/{self.epochs}",
                     unit="batches",
-                    total=len(self.train_loader) * self.repeat_count,
+                    total=len(self.train_loader),
                     leave=False,
                 )
-                for data, label in repeat(self.train_loader, self.repeat_count):
+                for data, label in self.train_loader:
                     # Move to device
                     data = data.to(self.device)
                     label = label.to(self.device)
@@ -201,7 +200,7 @@ class TrainingRun:
                 # validation
 
                 val_losses = []
-                for data, label in repeat(self.val_loader, self.repeat_count):
+                for data, label in self.val_loader:
                     # Move to device
                     data = data.to(self.device)
                     label = label.to(self.device)
@@ -231,7 +230,7 @@ class TrainingRun:
 
         test_losses = []
 
-        for data, label in repeat(self.test_loader, 10):
+        for data, label in self.test_loader, 10:
             # Move to device
             data = data.to(self.device)
             label = label.to(self.device)

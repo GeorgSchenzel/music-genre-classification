@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List
 
 import pandas as pd
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 import mutagen
 import torchaudio
 from tqdm import tqdm
@@ -120,3 +120,16 @@ class MusicGenreDataset(Dataset):
             raise MemoryError(
                 "Aborting. Less than 500mb available memory left on device. "
             )
+
+
+class RepeatedLoader:
+    def __init__(self, loader: DataLoader, repeat_count: int):
+        self.loader = loader
+        self.repeat_count = repeat_count
+
+    def __iter__(self):
+        for _ in range(self.repeat_count):
+            yield from self.loader
+
+    def __len__(self):
+        return self.repeat_count * len(self.loader)
