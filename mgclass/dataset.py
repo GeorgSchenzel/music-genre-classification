@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 
 import pandas as pd
 import torch
@@ -24,11 +24,14 @@ class MusicGenreDataset(Dataset):
         file_transform=None,
         num_classes=10,
         dry_run=False,
+        playlist_to_genre: Dict[str, str] = None # should be playlistid: genre label
     ):
         self.data_dir = data_dir
 
         with open(data_dir / "spotdj.json", "r") as f:
-            self.spotdj_data = json.load(f).get("songs")
+            j = json.load(f)
+            self.spotdj_data = j.get("songs")
+            self.playlist_data = j.get("playlists")
 
         self.preprocess = preprocess
         self.transform = transform
@@ -36,15 +39,25 @@ class MusicGenreDataset(Dataset):
         self.file_transform = file_transform
         self.num_classes = num_classes
 
-        self.genres = self.aggregate_best_genres()
+        if playlist_to_genre is not None:
+            print(f"Using genre from playlist source")
+            self.genres = list(set(playlist_to_genre.values()))
+
+        else:
+            print(f"Using most {self.num_classes} occurring genres from spotify api")
+            self.genres = self.aggregate_best_genres()
+
+        self.genres = sorted(self.genres)
 
         with Timer("Dataset creation"):
             if dry_run:
-                self.data, self.labels = self.create__dry_run_dataset()
+                self.data, self.labels = self.create_dry_run_dataset()
+            elif playlist_to_genre is not None:
+                self.data, self.labels = self.create_dataset_from_playlist_genre(playlist_to_genre)
             else:
-                self.data, self.labels = self.create_dataset()
+                self.data, self.labels = self.create_dataset_from_id3_genre()
 
-    def create_dataset(self) -> (List[Path], List[int]):
+    def create_dataset_from_id3_genre(self) -> (List[Path], List[int]):
         data = []
         labels = []
 
@@ -77,13 +90,48 @@ class MusicGenreDataset(Dataset):
                     d = self.preprocess(d)
 
                 data.append(d)
+                self.ensure_enough_memory()
 
             except FileNotFoundError:
                 pass
 
         return data, labels
 
-    def create__dry_run_dataset(self) -> (List[Path], List[int]):
+    def create_dataset_from_playlist_genre(self, playlist_to_genre: Dict[str, str]) -> (List[Path], List[int]):
+        data = []
+        labels = []
+        genre_to_label = {genre: i for i, genre in enumerate(self.genres)}
+
+        for playlist_id, playlist in tqdm(self.playlist_data.items(), desc="Creating Dataset"):
+            if playlist_id not in playlist_to_genre:
+                continue
+
+            genre = playlist_to_genre[playlist_id]
+            if genre not in self.genres:
+                continue
+            label = genre_to_label[genre]
+
+            m3u_file = self.data_dir / Path(playlist["m3u_file"])
+            playlist_size = sum(1 for _ in open(m3u_file, 'r'))
+            with open(m3u_file, "r") as m3u:
+                for song_path in tqdm(m3u, total=playlist_size, position=1, leave=False, desc=f"Processing Playlist {playlist['m3u_file']}"):
+                    song_file = self.data_dir / Path(song_path)
+
+                    if self.file_transform is not None:
+                        song_file = self.file_transform(song_file)
+
+                    d, sample_rate = torchaudio.load(song_file)
+
+                    if self.preprocess:
+                        d = self.preprocess(d)
+
+                    labels.append(label)
+                    data.append(d)
+                    self.ensure_enough_memory()
+
+        return data, labels
+
+    def create_dry_run_dataset(self) -> (List[Path], List[int]):
         data = []
         labels = []
 
