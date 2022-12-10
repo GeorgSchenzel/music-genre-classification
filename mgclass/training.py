@@ -1,5 +1,3 @@
-import sys
-from itertools import chain
 from pathlib import Path
 
 import numpy as np
@@ -10,11 +8,9 @@ import torchaudio.transforms as T
 import torch.optim as optim
 from torchmetrics import Accuracy
 
-from mgclass.MyNet import MyNet
 from mgclass.ResNet import ResNet
 from mgclass.music_genre_dataset import MusicGenreDataset
 from mgclass.timer import Timer
-from torchinfo import summary
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
@@ -25,41 +21,25 @@ def repeat(loader, times):
             yield x
 
 
-async def main(args):
-    batch_size = 16
+def some_experiment():
     data_shape = (128, 256)
-    repeat_count = 5
-
     num_classes = 10
+
     sample_rate = 16000
     win_length = 2048
     hop_size = 512
     n_mels = data_shape[0]
 
-    # Model
-
-    model = ResNet(num_classes)
-    #model = MyNet(num_classes)
-    summary(model, input_size=(batch_size, 1) + data_shape)
-
-    # Move to Device (preferably GPU)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using {device}\n")
-
-    model.to(device)
-
-    # Dataset
-
     """
     win_length defines the width of each chunk in terms of samples
-    
+
     the duration of each chunk is win_length / sampling_rate
     the number of chunks is #total_frames / hop_length
     the overlap is win_length - hop_length / win_length
-    
+
     thus we can calculate the receptive field of the first layer by:
         seconds = kernel_size * hop_size / sample_rate
-    
+
     or a single bin covers hop_size / sample_rate seconds of out data
     """
     mel_spectrogram = T.MelSpectrogram(
@@ -89,141 +69,201 @@ async def main(args):
             preprocess=mel_spectrogram,
             transform=random_crop,
             file_transform=select_file,
-            num_classes=num_classes,
         )
 
-    train_size = int(0.8 * len(dataset))
-    val_size = (len(dataset) - train_size) // 2
-    test_size = len(dataset) - train_size - val_size
-    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(
-        dataset, [train_size, val_size, test_size]
-    )
+    model = ResNet(num_classes)
 
-    print(f"Total Size: {len(dataset)}")
-    print(f"Train Size: {len(train_dataset)}")
-    print(f"Val Size: {len(test_dataset)}")
-    print(f"Test Size: {len(test_dataset)}")
-    print(f"Genres: {dataset.genres}")
+    run = TrainingRun(dataset, model, epochs=100)
+    run.summary()
+    run.start()
+    run.plot()
 
-    # Setup
 
-    loss_fn = nn.CrossEntropyLoss()
-    #optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
+class TrainingRun:
+    def __init__(
+        self,
+        dataset: MusicGenreDataset,
+        model,
+        epochs=100,
+        batch_size=16,
+        repeat_count=1,
+    ):
+        self.dataset = dataset
+        self.model = model
+        self.epochs = epochs
+        self.batch_size = batch_size
+        # TODO: move into loader
+        self.repeat_count = repeat_count
 
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=8,
-        prefetch_factor=4,
-        pin_memory=True,
-        persistent_workers=True
-    )
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
 
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=batch_size, shuffle=False, num_workers=8
-    )
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=batch_size, shuffle=False, num_workers=8
-    )
+        self._prepare_data_loaders()
 
-    # Train
+        self.loss_fn = nn.CrossEntropyLoss()
+        # self.optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        self.optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
-    acc_train = Accuracy("multiclass", num_classes=num_classes).to(device)
-    acc_val = Accuracy("multiclass", num_classes=num_classes).to(device)
-    acc_test = Accuracy("multiclass", num_classes=num_classes).to(device)
+        self.already_ran = False
 
-    # for plotting later
-    train_accuracies = []
-    val_accuracies = []
-    train_losses = []
-    val_losses = []
+        # for plotting
+        self.train_accuracies = []
+        self.val_accuracies = []
+        self.train_losses = []
+        self.val_losses = []
 
-    epochs = 100
-    print(f"Starting training for {epochs} epochs\n")
-    sys.stdout.flush()
-    with Timer("Training"):
-        for epoch in range(epochs):
-            epoch_timer = Timer().start()
+    def summary(self):
+        print(f"Total Size: {len(self.dataset)}")
+        print(f"Train Size: {len(self.train_dataset)}")
+        print(f"Val Size: {len(self.test_dataset)}")
+        print(f"Test Size: {len(self.test_dataset)}")
+        print(f"Genres: {self.dataset.genres}")
 
-            batch_losses = []
+    def start(self):
+        if self.already_ran:
+            raise Exception("Training already ran.")
+        self.already_ran = True
 
-            pbar = tqdm(desc=f"Epoch {epoch:3d}/{epochs}", unit="batches", total=len(train_loader) * repeat_count, leave=False)
-            for data, label in repeat(train_loader, repeat_count):
-                # Move to device
-                data = data.to(device)
-                label = label.to(device)
+        self._train()
 
-                model.train(True)
-                model.zero_grad()
+    def _prepare_data_loaders(self):
+        train_size = int(0.8 * len(self.dataset))
+        val_size = (len(self.dataset) - train_size) // 2
+        test_size = len(self.dataset) - train_size - val_size
+        (
+            self.train_dataset,
+            self.val_dataset,
+            self.test_dataset,
+        ) = torch.utils.data.random_split(
+            self.dataset, [train_size, val_size, test_size]
+        )
 
-                # Forward pass
-                outputs = model.forward(data)
-                loss = loss_fn(outputs, label)
+        self.train_loader = torch.utils.data.DataLoader(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=8,
+            prefetch_factor=4,
+            pin_memory=True,
+            persistent_workers=True,
+        )
 
-                # Backward pass
-                loss.backward()
-                optimizer.step()
+        self.val_loader = torch.utils.data.DataLoader(
+            self.val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=8
+        )
+        self.test_loader = torch.utils.data.DataLoader(
+            self.test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=8
+        )
 
-                model.train(False)
+    def _train(self):
+        num_classes = self.dataset.num_classes
+        train_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
+        val_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
+        test_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
 
-                acc_train.update(outputs, label)
-                batch_losses.append(loss.item())
+        print(f"Starting training for {self.epochs} epochs")
 
-                pbar.update()
+        with Timer("Training"):
+            for epoch in range(self.epochs):
+                epoch_timer = Timer().start()
 
-            # validation
+                batch_losses = []
 
-            for data, label in repeat(val_loader, repeat_count):
-                # Move to device
-                data = data.to(device)
-                label = label.to(device)
+                pbar = tqdm(
+                    desc=f"Epoch {epoch:3d}/{self.epochs}",
+                    unit="batches",
+                    total=len(self.train_loader) * self.repeat_count,
+                    leave=False,
+                )
+                for data, label in repeat(self.train_loader, self.repeat_count):
+                    # Move to device
+                    data = data.to(self.device)
+                    label = label.to(self.device)
 
-                pred = model(data)
-                loss_val = loss_fn(pred, label)
-                acc_val.update(pred, label)
+                    self.model.train(True)
+                    self.model.zero_grad()
 
-            train_accuracies.append(float(acc_train.compute()))
-            val_accuracies.append(float(acc_val.compute()))
-            train_losses.append(np.array(batch_losses).mean())
-            val_losses.append(float(loss_val))
+                    # Forward pass
+                    outputs = self.model.forward(data)
+                    loss = self.loss_fn(outputs, label)
 
-            # console output
-            pbar.close()
-            print(
-                f"Epoch {epoch:3d}/{epochs}, "
-                f"train_loss: {train_losses[-1]:2.3f}, train_acc: {acc_train.compute():3.3f}, "
-                f"val_loss: {loss_val:2.3f}, val_acc: {acc_val.compute():3.3f}, "
-                f"in {epoch_timer.stop(False):2.2f}s"
-            )
+                    # Backward pass
+                    loss.backward()
+                    self.optimizer.step()
 
-            acc_train.reset()
-            acc_val.reset()
+                    self.model.train(False)
 
-    for data, label in repeat(test_loader, 10):
-        # Move to device
-        data = data.to(device)
-        label = label.to(device)
+                    batch_losses.append(loss.item())
+                    train_acc.update(outputs, label)
 
-        pred = model(data)
-        acc_test.update(pred, label)
+                    pbar.update()
 
-    print(f"Test Accuracy: {acc_test.compute()}")
+                # validation
 
-    xx = np.arange(epochs)
-    plt.title("Accuracies")
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy")
-    plt.plot(xx, train_accuracies, label="train")
-    plt.plot(xx, val_accuracies, label="validate")
-    plt.legend()
-    plt.show()
+                val_losses = []
+                for data, label in repeat(self.val_loader, self.repeat_count):
+                    # Move to device
+                    data = data.to(self.device)
+                    label = label.to(self.device)
 
-    plt.title("Loss")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.plot(xx, train_losses, label="train")
-    plt.plot(xx, val_losses, label="validate")
-    plt.legend()
-    plt.show()
+                    pred = self.model(data)
+
+                    val_loss = self.loss_fn(pred, label)
+                    val_losses.append(val_loss.item())
+                    val_acc.update(pred, label)
+
+                self.train_losses.append(np.array(batch_losses).mean())
+                self.train_accuracies.append(float(train_acc.compute()))
+                self.val_losses.append(np.array(val_losses).mean())
+                self.val_accuracies.append(float(val_acc.compute()))
+
+                # console output
+                pbar.close()
+                print(
+                    f"Epoch {epoch:3d}/{self.epochs}, "
+                    f"train_loss: {self.train_losses[-1]:2.3f}, train_acc: {train_acc.compute():3.3f}, "
+                    f"val_loss: {self.val_losses[-1]:2.3f}, val_acc: {val_acc.compute():3.3f}, "
+                    f"in {epoch_timer.stop(False):2.2f}s"
+                )
+
+                train_acc.reset()
+                val_acc.reset()
+
+        test_losses = []
+
+        for data, label in repeat(self.test_loader, 10):
+            # Move to device
+            data = data.to(self.device)
+            label = label.to(self.device)
+
+            pred = self.model(data)
+
+            test_loss = self.loss_fn(pred, label)
+            test_losses.append(test_loss.item())
+            test_acc.update(pred, label)
+
+        print(
+            f"test_loss: {np.array(test_losses).mean()}, test_acc: {test_acc.compute()}"
+        )
+
+    def plot(self, title="Training Run"):
+        xx = np.arange(self.epochs)
+        plt.title("Accuracies")
+        plt.xlabel("Epoch")
+        plt.ylabel("Accuracy")
+        plt.plot(xx, self.train_accuracies, label="train")
+        plt.plot(xx, self.val_accuracies, label="validate")
+        plt.legend()
+        plt.show()
+
+        plt.title("Loss")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.plot(xx, self.train_losses, label="train")
+        plt.plot(xx, self.val_losses, label="validate")
+        plt.legend()
+        plt.show()
+
+
+async def main(args):
+    some_experiment()
