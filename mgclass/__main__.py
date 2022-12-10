@@ -1,7 +1,7 @@
 import argparse
 import asyncio
 
-from mgclass import data_downloader, datat_analyzer, training
+from mgclass import analysis, training, raw_data
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -14,6 +14,7 @@ def create_parser() -> argparse.ArgumentParser:
     add_data_downloader_subparser(subparsers)
     add_data_analyzer_subparser(subparsers)
     add_dataset_generator_subparser(subparsers)
+    add_converter_subparser(subparsers)
 
     return parser
 
@@ -21,12 +22,19 @@ def create_parser() -> argparse.ArgumentParser:
 def add_data_downloader_subparser(subparsers):
     parser = subparsers.add_parser("download", help="download raw data")
 
-    parser.set_defaults(func=data_downloader.main)
-    parser.add_argument("path", help="the directory to store the raw data in")
+    parser.set_defaults(func=raw_data.download_command)
+    parser.add_argument("destination", help="the directory to store the raw data in")
     parser.add_argument(
         "playlists_file",
         help="A file containing the playlists to download, must be a .yaml with urls in a list",
     )
+
+
+def add_converter_subparser(subparsers):
+    parser = subparsers.add_parser("convert", help="convert mp3s to wav")
+
+    parser.set_defaults(func=raw_data.download_command)
+    parser.add_argument("source_dir")
 
 
 def add_dataset_generator_subparser(subparsers):
@@ -38,7 +46,7 @@ def add_dataset_generator_subparser(subparsers):
 def add_data_analyzer_subparser(subparsers):
     parser = subparsers.add_parser("analyze", help="analyze raw data")
 
-    parser.set_defaults(func=datat_analyzer.main)
+    parser.set_defaults(func=analysis.main)
     parser.add_argument("path", help="the path to the 'spotdj.json' file")
 
 

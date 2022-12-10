@@ -1,1 +1,1 @@
-from music_genre_dataset import MusicGenreDataset
+from mgclass.dataset import *

@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import mutagen
 import torchaudio
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 import os
 import platform
 
@@ -84,7 +84,10 @@ class MusicGenreDataset(Dataset):
 
                 labels.append(genre_to_label[genre])
 
-                d, sample_rate = torchaudio.load(song_file)
+                try:
+                    d, sample_rate = torchaudio.load(song_file)
+                except RuntimeError:
+                    continue
 
                 if self.preprocess:
                     d = self.preprocess(d)
@@ -102,19 +105,16 @@ class MusicGenreDataset(Dataset):
         labels = []
         genre_to_label = {genre: i for i, genre in enumerate(self.genres)}
 
-        for playlist_id, playlist in tqdm(self.playlist_data.items(), desc="Creating Dataset"):
-            if playlist_id not in playlist_to_genre:
-                continue
-
+        for i, (playlist_id, genre) in enumerate(playlist_to_genre.items()):
             genre = playlist_to_genre[playlist_id]
-            if genre not in self.genres:
-                continue
+            playlist = self.playlist_data[playlist_id]
+
             label = genre_to_label[genre]
 
             m3u_file = self.data_dir / Path(playlist["m3u_file"])
             playlist_size = sum(1 for _ in open(m3u_file, 'r'))
             with open(m3u_file, "r") as m3u:
-                for song_path in tqdm(m3u, total=playlist_size, position=1, leave=False, desc=f"Processing Playlist {playlist['m3u_file']}"):
+                for song_path in tqdm(m3u, total=playlist_size, desc=f"Processing Playlist ({i}/{len(playlist_to_genre.items())}) {playlist['m3u_file']}"):
                     song_file = self.data_dir / Path(song_path)
 
                     if self.file_transform is not None:
@@ -192,9 +192,9 @@ class MusicGenreDataset(Dataset):
 
         free_memory = int(os.popen("free -m").readlines()[1].split()[-1])
 
-        if free_memory < 500:
+        if free_memory < 1000:
             raise MemoryError(
-                "Aborting. Less than 500mb available memory left on device. "
+                "Aborting. Less than 1GB available memory left on device. "
             )
 
 

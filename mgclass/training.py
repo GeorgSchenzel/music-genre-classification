@@ -11,18 +11,18 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchmetrics import Accuracy, ConfusionMatrix
 
-from mgclass.ResNet import ResNet
-from mgclass.music_genre_dataset import MusicGenreDataset, RepeatedLoader
+from mgclass import networks
+from mgclass import MusicGenreDataset, RepeatedLoader
 from mgclass.timer import Timer
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 
 def some_experiment():
-    dry_run = False
+    dry_run = True
 
     data_shape = (128, 256)
-    num_classes = 10
+    num_classes = 7
 
     sample_rate = 16000
     win_length = 2048
@@ -43,9 +43,9 @@ def some_experiment():
     """
     mel_spectrogram = T.MelSpectrogram(
         sample_rate=sample_rate,
-        n_fft=win_length,
-        win_length=win_length,
-        hop_length=hop_size,
+        n_fft=win_length*4,
+        win_length=win_length*4,
+        hop_length=hop_size*4,
         center=True,
         pad_mode="reflect",
         power=2.0,
@@ -62,17 +62,29 @@ def some_experiment():
 
         return new
 
+    playlist_to_genre = {
+        "18vUeZ9BdtMRNV6gI8RnR6": "Techno",
+        "0rvPxkmlJZ5EX4JXutyP6I": "Tech House",
+        "37i9dQZF1DWTU3Zl0elDUa": "90s House",
+        "6vDGVr652ztNWKZuHvsFvx": "Deep House",
+        "068WHS0zOWsqvn2uIBYb5D": "DnB",
+        "0ZOspi3XrshQrmVzmlQFx6": "Liquid DnB ",
+        "4aKW9X7zIju4ijCSL7MR7T": "Future Rave",
+    }
+
     dataset = MusicGenreDataset(
         data_dir=Path("/home/georg/Music/ADL/"),
+        num_classes=num_classes,
         preprocess=mel_spectrogram,
         transform=random_crop,
         file_transform=select_file,
         dry_run=dry_run,
+        playlist_to_genre=playlist_to_genre
     )
 
-    model = ResNet(num_classes)
+    model = networks.ResNet(num_classes)
 
-    run = TrainingRun(dataset, model, epochs=100, dry_run=dry_run, repeat_count=1)
+    run = TrainingRun(dataset, model, epochs=10, dry_run=dry_run, repeat_count=10)
     run.summary()
     run.start()
     run.plot()
@@ -275,11 +287,14 @@ class TrainingRun:
         ax1.set(xlabel="epoch", ylabel="accuracy")
         ax1.plot(xx, self.train_accuracies, label="train")
         ax1.plot(xx, self.val_accuracies, label="validate")
+        ax1.set_ylim(bottom=0)
 
         ax2.set_title("Loss")
         ax2.set(xlabel="epoch", ylabel="loss")
         ax2.plot(xx, self.train_losses, label="train")
         ax2.plot(xx, self.val_losses, label="validate")
+        ax2.set_ylim(bottom=0)
+
 
         ax3.set_title("Confusion Matrix")
         df_cm = pd.DataFrame(
@@ -287,7 +302,7 @@ class TrainingRun:
             index=[i for i in self.dataset.genres],
             columns=[i for i in self.dataset.genres],
         )
-        sn.heatmap(df_cm, annot=True, ax=ax3, cbar=False)
+        sn.heatmap(df_cm, annot=True, ax=ax3, cbar=False, fmt='d')
         ax3.tick_params(rotation=45)
         ax3.set_xticklabels(ax3.get_xticklabels(), ha="right")
         ax3.set_yticklabels(ax3.get_yticklabels(), va="top")
