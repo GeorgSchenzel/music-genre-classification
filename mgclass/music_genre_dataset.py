@@ -3,12 +3,15 @@ from pathlib import Path
 from typing import List
 
 import pandas as pd
+import torch
 from torch.utils.data import Dataset, DataLoader
 import mutagen
 import torchaudio
 from tqdm import tqdm
 import os
 import platform
+
+from mgclass.timer import Timer
 
 
 class MusicGenreDataset(Dataset):
@@ -20,6 +23,7 @@ class MusicGenreDataset(Dataset):
         target_transform=None,
         file_transform=None,
         num_classes=10,
+        dry_run=False
     ):
         self.data_dir = data_dir
 
@@ -33,7 +37,12 @@ class MusicGenreDataset(Dataset):
         self.num_classes = num_classes
 
         self.genres = self.aggregate_best_genres()
-        self.data, self.labels = self.create_dataset()
+
+        with Timer("Dataset creation"):
+            if dry_run:
+                self.data, self.labels = self.create__dry_run_dataset()
+            else:
+                self.data, self.labels = self.create_dataset()
 
     def create_dataset(self) -> (List[Path], List[int]):
         data = []
@@ -71,6 +80,22 @@ class MusicGenreDataset(Dataset):
 
             except FileNotFoundError:
                 pass
+
+        return data, labels
+
+    def create__dry_run_dataset(self) -> (List[Path], List[int]):
+        data = []
+        labels = []
+
+        for l in range(self.num_classes):
+            for i in range(10):
+                labels.append(l)
+
+                # random 60s data
+                d = torch.rand((1, 16000 * 60))
+                if self.preprocess:
+                    d = self.preprocess(d)
+                data.append(d)
 
         return data, labels
 

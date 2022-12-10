@@ -58,17 +58,17 @@ def some_experiment():
 
         return new
 
-    with Timer("Dataset creation"):
-        dataset = MusicGenreDataset(
-            data_dir=Path("/home/georg/Music/ADL/"),
-            preprocess=mel_spectrogram,
-            transform=random_crop,
-            file_transform=select_file,
-        )
+    dataset = MusicGenreDataset(
+        data_dir=Path("/home/georg/Music/ADL/"),
+        preprocess=mel_spectrogram,
+        transform=random_crop,
+        file_transform=select_file,
+        dry_run=True
+    )
 
     model = ResNet(num_classes)
 
-    run = TrainingRun(dataset, model, epochs=100)
+    run = TrainingRun(dataset, model, epochs=100, dry_run=True)
     run.summary()
     run.start()
     run.plot()
@@ -82,12 +82,13 @@ class TrainingRun:
         epochs=100,
         batch_size=16,
         repeat_count=10,
+        dry_run=False
     ):
         self.dataset = dataset
         self.model = model
-        self.epochs = epochs
+        self.epochs = epochs if not dry_run else 10
         self.batch_size = batch_size
-        self.repeat_count = repeat_count
+        self.repeat_count = repeat_count if not dry_run else 1
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
@@ -118,7 +119,8 @@ class TrainingRun:
             raise Exception("Training already ran.")
         self.already_ran = True
 
-        self._train()
+        with Timer("Training"):
+            self._train()
 
     def _prepare_data_loaders(self):
         train_size = int(0.8 * len(self.dataset))
@@ -151,7 +153,7 @@ class TrainingRun:
         )
 
         self.train_loader = RepeatedLoader(self.train_loader, self.repeat_count)
-        self.train_loader = RepeatedLoader(self.test_loader, self.repeat_count)
+        self.test_loader = RepeatedLoader(self.test_loader, self.repeat_count)
         self.val_loader = RepeatedLoader(self.val_loader, self.repeat_count)
 
     def _train(self):
@@ -162,75 +164,74 @@ class TrainingRun:
 
         print(f"Starting training for {self.epochs} epochs")
 
-        with Timer("Training"):
-            for epoch in range(self.epochs):
-                epoch_timer = Timer().start()
+        for epoch in range(self.epochs):
+            epoch_timer = Timer().start()
 
-                batch_losses = []
+            batch_losses = []
 
-                pbar = tqdm(
-                    desc=f"Epoch {epoch:3d}/{self.epochs}",
-                    unit="batches",
-                    total=len(self.train_loader),
-                    leave=False,
-                )
-                for data, label in self.train_loader:
-                    # Move to device
-                    data = data.to(self.device)
-                    label = label.to(self.device)
+            pbar = tqdm(
+                desc=f"Epoch {epoch:3d}/{self.epochs}",
+                unit="batches",
+                total=len(self.train_loader),
+                leave=False,
+            )
+            for data, label in self.train_loader:
+                # Move to device
+                data = data.to(self.device)
+                label = label.to(self.device)
 
-                    self.model.train(True)
-                    self.model.zero_grad()
+                self.model.train(True)
+                self.model.zero_grad()
 
-                    # Forward pass
-                    outputs = self.model.forward(data)
-                    loss = self.loss_fn(outputs, label)
+                # Forward pass
+                outputs = self.model.forward(data)
+                loss = self.loss_fn(outputs, label)
 
-                    # Backward pass
-                    loss.backward()
-                    self.optimizer.step()
+                # Backward pass
+                loss.backward()
+                self.optimizer.step()
 
-                    self.model.train(False)
+                self.model.train(False)
 
-                    batch_losses.append(loss.item())
-                    train_acc.update(outputs, label)
+                batch_losses.append(loss.item())
+                train_acc.update(outputs, label)
 
-                    pbar.update()
+                pbar.update()
 
-                # validation
+            # validation
 
-                val_losses = []
-                for data, label in self.val_loader:
-                    # Move to device
-                    data = data.to(self.device)
-                    label = label.to(self.device)
+            val_losses = []
+            for data, label in self.val_loader:
+                # Move to device
+                data = data.to(self.device)
+                label = label.to(self.device)
 
-                    pred = self.model(data)
+                pred = self.model(data)
 
-                    val_loss = self.loss_fn(pred, label)
-                    val_losses.append(val_loss.item())
-                    val_acc.update(pred, label)
+                val_loss = self.loss_fn(pred, label)
+                val_losses.append(val_loss.item())
+                val_acc.update(pred, label)
 
-                self.train_losses.append(np.array(batch_losses).mean())
-                self.train_accuracies.append(float(train_acc.compute()))
-                self.val_losses.append(np.array(val_losses).mean())
-                self.val_accuracies.append(float(val_acc.compute()))
+            self.train_losses.append(np.array(batch_losses).mean())
+            self.train_accuracies.append(float(train_acc.compute()))
+            self.val_losses.append(np.array(val_losses).mean())
+            self.val_accuracies.append(float(val_acc.compute()))
 
-                # console output
-                pbar.close()
-                print(
-                    f"Epoch {epoch:3d}/{self.epochs}, "
-                    f"train_loss: {self.train_losses[-1]:2.3f}, train_acc: {train_acc.compute():3.3f}, "
-                    f"val_loss: {self.val_losses[-1]:2.3f}, val_acc: {val_acc.compute():3.3f}, "
-                    f"in {epoch_timer.stop(False):2.2f}s"
-                )
+            # console output
+            pbar.close()
+            print(
+                f"Epoch {epoch:3d}/{self.epochs}, "
+                f"train_loss: {self.train_losses[-1]:2.3f}, train_acc: {train_acc.compute():3.3f}, "
+                f"val_loss: {self.val_losses[-1]:2.3f}, val_acc: {val_acc.compute():3.3f}, "
+                f"in {epoch_timer.stop(False):2.2f}s"
+            )
 
-                train_acc.reset()
-                val_acc.reset()
+            train_acc.reset()
+            val_acc.reset()
 
         test_losses = []
 
-        for data, label in self.test_loader, 10:
+        for data, label in self.test_loader:
             # Move to device
             data = data.to(self.device)
             label = label.to(self.device)
