@@ -1,13 +1,15 @@
 from pathlib import Path
 
 import numpy as np
+import seaborn as sn
+import pandas as pd
 import torch.nn as nn
 import torch
 import torchvision.transforms as transforms
 import torchaudio.transforms as T
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torchmetrics import Accuracy
+from torchmetrics import Accuracy, ConfusionMatrix
 
 from mgclass.ResNet import ResNet
 from mgclass.music_genre_dataset import MusicGenreDataset, RepeatedLoader
@@ -17,6 +19,8 @@ from tqdm import tqdm
 
 
 def some_experiment():
+    dry_run = False
+
     data_shape = (128, 256)
     num_classes = 10
 
@@ -63,12 +67,12 @@ def some_experiment():
         preprocess=mel_spectrogram,
         transform=random_crop,
         file_transform=select_file,
-        dry_run=True
+        dry_run=dry_run,
     )
 
     model = ResNet(num_classes)
 
-    run = TrainingRun(dataset, model, epochs=100, dry_run=True)
+    run = TrainingRun(dataset, model, epochs=100, dry_run=dry_run, repeat_count=1)
     run.summary()
     run.start()
     run.plot()
@@ -81,8 +85,8 @@ class TrainingRun:
         model,
         epochs=100,
         batch_size=16,
-        repeat_count=10,
-        dry_run=False
+        repeat_count=1,
+        dry_run=False,
     ):
         self.dataset = dataset
         self.model = model
@@ -141,11 +145,14 @@ class TrainingRun:
             num_workers=8,
             prefetch_factor=4,
             pin_memory=True,
-            persistent_workers=True
+            persistent_workers=True,
         )
 
         self.val_loader = DataLoader(
-            self.val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=8,
+            self.val_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=8,
         )
 
         self.test_loader = DataLoader(
@@ -230,6 +237,11 @@ class TrainingRun:
             val_acc.reset()
 
         test_losses = []
+        y_pred = []
+        y_true = []
+        cm = ConfusionMatrix("multiclass", num_classes=self.dataset.num_classes).to(
+            self.device
+        )
 
         for data, label in self.test_loader:
             # Move to device
@@ -242,26 +254,50 @@ class TrainingRun:
             test_losses.append(test_loss.item())
             test_acc.update(pred, label)
 
+            cm.update(pred, label)
+
+            y_true.extend(label.tolist())
+            y_pred.extend(pred.tolist())
+
+        self.confusion_matrix = cm.compute().cpu().numpy()
+
         print(
             f"test_loss: {np.array(test_losses).mean()}, test_acc: {test_acc.compute()}"
         )
 
     def plot(self, title="Training Run"):
         xx = np.arange(self.epochs)
-        plt.title("Accuracies")
-        plt.xlabel("Epoch")
-        plt.ylabel("Accuracy")
-        plt.plot(xx, self.train_accuracies, label="train")
-        plt.plot(xx, self.val_accuracies, label="validate")
-        plt.legend()
-        plt.show()
 
-        plt.title("Loss")
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss")
-        plt.plot(xx, self.train_losses, label="train")
-        plt.plot(xx, self.val_losses, label="validate")
-        plt.legend()
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+        fig.suptitle(title)
+
+        ax1.set_title("Accuracy")
+        ax1.set(xlabel="epoch", ylabel="accuracy")
+        ax1.plot(xx, self.train_accuracies, label="train")
+        ax1.plot(xx, self.val_accuracies, label="validate")
+
+        ax2.set_title("Loss")
+        ax2.set(xlabel="epoch", ylabel="loss")
+        ax2.plot(xx, self.train_losses, label="train")
+        ax2.plot(xx, self.val_losses, label="validate")
+
+        ax3.set_title("Confusion Matrix")
+        df_cm = pd.DataFrame(
+            self.confusion_matrix,
+            index=[i for i in self.dataset.genres],
+            columns=[i for i in self.dataset.genres],
+        )
+        sn.heatmap(df_cm, annot=True, ax=ax3, cbar=False)
+        ax3.tick_params(rotation=45)
+        ax3.set_xticklabels(ax3.get_xticklabels(), ha="right")
+        ax3.set_yticklabels(ax3.get_yticklabels(), va="top")
+
+        lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
+        lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+        fig.legend(lines, labels)
+
+        fig.set_size_inches(10, 8)
+        plt.tight_layout()
         plt.show()
 
 

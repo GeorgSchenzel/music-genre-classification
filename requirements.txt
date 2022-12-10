@@ -9,5 +9,6 @@ torchmetrics
 torchinfo
 librosa
 psutil
+seaborn
 
 -e ../spotdj

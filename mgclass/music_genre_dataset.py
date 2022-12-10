@@ -23,7 +23,7 @@ class MusicGenreDataset(Dataset):
         target_transform=None,
         file_transform=None,
         num_classes=10,
-        dry_run=False
+        dry_run=False,
     ):
         self.data_dir = data_dir
 
@@ -87,15 +87,19 @@ class MusicGenreDataset(Dataset):
         data = []
         labels = []
 
-        for l in range(self.num_classes):
+        pbar = tqdm(desc="Creating dataset", total=10 * self.num_classes)
+        for c in range(self.num_classes):
             for i in range(10):
-                labels.append(l)
+                labels.append(c)
 
                 # random 60s data
                 d = torch.rand((1, 16000 * 60))
                 if self.preprocess:
                     d = self.preprocess(d)
                 data.append(d)
+
+                pbar.update()
+        pbar.close()
 
         return data, labels
 
@@ -135,7 +139,6 @@ class MusicGenreDataset(Dataset):
 
     @staticmethod
     def ensure_enough_memory():
-
         if platform.system() != "Linux":
             return
 
