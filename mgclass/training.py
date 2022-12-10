@@ -1,4 +1,5 @@
 import sys
+from itertools import chain
 from pathlib import Path
 
 import numpy as np
@@ -9,15 +10,25 @@ import torchaudio.transforms as T
 import torch.optim as optim
 from torchmetrics import Accuracy
 
+from mgclass.MyNet import MyNet
 from mgclass.ResNet import ResNet
 from mgclass.music_genre_dataset import MusicGenreDataset
 from mgclass.timer import Timer
 from torchinfo import summary
+from matplotlib import pyplot as plt
+from tqdm import tqdm
+
+
+def repeat(loader, times):
+    for _ in range(times):
+        for x in loader:
+            yield x
 
 
 async def main(args):
     batch_size = 16
     data_shape = (128, 256)
+    repeat_count = 5
 
     num_classes = 10
     sample_rate = 16000
@@ -28,6 +39,7 @@ async def main(args):
     # Model
 
     model = ResNet(num_classes)
+    #model = MyNet(num_classes)
     summary(model, input_size=(batch_size, 1) + data_shape)
 
     # Move to Device (preferably GPU)
@@ -96,15 +108,19 @@ async def main(args):
     # Setup
 
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    #optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
         num_workers=8,
-        prefetch_factor=8,
+        prefetch_factor=4,
+        pin_memory=True,
+        persistent_workers=True
     )
+
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=batch_size, shuffle=False, num_workers=8
     )
@@ -114,8 +130,15 @@ async def main(args):
 
     # Train
 
+    acc_train = Accuracy("multiclass", num_classes=num_classes).to(device)
     acc_val = Accuracy("multiclass", num_classes=num_classes).to(device)
     acc_test = Accuracy("multiclass", num_classes=num_classes).to(device)
+
+    # for plotting later
+    train_accuracies = []
+    val_accuracies = []
+    train_losses = []
+    val_losses = []
 
     epochs = 100
     print(f"Starting training for {epochs} epochs\n")
@@ -126,7 +149,8 @@ async def main(args):
 
             batch_losses = []
 
-            for data, label in train_loader:
+            pbar = tqdm(desc=f"Epoch {epoch:3d}/{epochs}", unit="batches", total=len(train_loader) * repeat_count, leave=False)
+            for data, label in repeat(train_loader, repeat_count):
                 # Move to device
                 data = data.to(device)
                 label = label.to(device)
@@ -143,28 +167,41 @@ async def main(args):
                 optimizer.step()
 
                 model.train(False)
+
+                acc_train.update(outputs, label)
                 batch_losses.append(loss.item())
 
-            batch_losses = np.array(batch_losses)
-            mean = round(np.mean(batch_losses), 3)
-            std = round(np.std(batch_losses), 4)
+                pbar.update()
 
             # validation
 
-            for data, label in val_loader:
+            for data, label in repeat(val_loader, repeat_count):
                 # Move to device
                 data = data.to(device)
                 label = label.to(device)
 
                 pred = model(data)
+                loss_val = loss_fn(pred, label)
                 acc_val.update(pred, label)
 
+            train_accuracies.append(float(acc_train.compute()))
+            val_accuracies.append(float(acc_val.compute()))
+            train_losses.append(np.array(batch_losses).mean())
+            val_losses.append(float(loss_val))
+
             # console output
+            pbar.close()
             print(
-                f"Epoch {epoch:3d}/{epochs}, Loss: {mean:2.3f} +- {std:1.4f}, Accuracy: {acc_val.compute():3.3f}, in {epoch_timer.stop(False):2.2f}s"
+                f"Epoch {epoch:3d}/{epochs}, "
+                f"train_loss: {train_losses[-1]:2.3f}, train_acc: {acc_train.compute():3.3f}, "
+                f"val_loss: {loss_val:2.3f}, val_acc: {acc_val.compute():3.3f}, "
+                f"in {epoch_timer.stop(False):2.2f}s"
             )
 
-    for data, label in test_loader:
+            acc_train.reset()
+            acc_val.reset()
+
+    for data, label in repeat(test_loader, 10):
         # Move to device
         data = data.to(device)
         label = label.to(device)
@@ -173,3 +210,20 @@ async def main(args):
         acc_test.update(pred, label)
 
     print(f"Test Accuracy: {acc_test.compute()}")
+
+    xx = np.arange(epochs)
+    plt.title("Accuracies")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.plot(xx, train_accuracies, label="train")
+    plt.plot(xx, val_accuracies, label="validate")
+    plt.legend()
+    plt.show()
+
+    plt.title("Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.plot(xx, train_losses, label="train")
+    plt.plot(xx, val_losses, label="validate")
+    plt.legend()
+    plt.show()

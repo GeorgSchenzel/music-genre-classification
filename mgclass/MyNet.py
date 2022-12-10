@@ -6,14 +6,14 @@ import torch.nn.functional as F
 class MyNet(nn.Module):
     def __init__(self, num_classes):
         super(MyNet, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 64, 2)
+        self.conv1 = nn.Conv2d(1, 32, 16, 1)
         self.conv2 = nn.Conv2d(32, 64, 3, 1)
         self.conv3 = nn.Conv2d(64, 128, 3, 1)
         self.dropout1 = nn.Dropout2d(0.25)
         self.dropout2 = nn.Dropout2d(0.25)
         self.dropout3 = nn.Dropout2d(0.25)
         self.dropout4 = nn.Dropout(0.25)
-        self.fc1 = nn.Linear(31232, 128)
+        self.fc1 = nn.Linear(43008, 128)
         self.fc2 = nn.Linear(128, num_classes)
 
     # x represents our data
