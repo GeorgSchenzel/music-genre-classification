@@ -10,9 +10,8 @@ from mgclass import MusicGenreDataset
 
 
 def plot_frequency_chart(df, title: str, rot=True):
-    print(title)
-    print(df.to_string())
-    print()
+    # print(title)
+    # print(df.to_string())
 
     ax = df.plot(kind="bar", rot=45 if rot else 0)
 

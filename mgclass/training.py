@@ -5,82 +5,33 @@ import seaborn as sn
 import pandas as pd
 import torch.nn as nn
 import torch
-import torchvision.transforms as transforms
-import torchaudio.transforms as T
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchmetrics import Accuracy, ConfusionMatrix
 
-from mgclass import networks
+from mgclass import networks, analysis
 from mgclass import MusicGenreDataset, RepeatedLoader
 from mgclass.timer import Timer
 from matplotlib import pyplot as plt
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm, trange
+
+from mgclass.utils import create_spectrogram, mp3_to_wav_location, sample_playlist_to_genre, create_crop
 
 
 def some_experiment():
-    dry_run = True
-
+    dry_run = False
     data_shape = (128, 256)
-    num_classes = 7
-
-    sample_rate = 16000
-    win_length = 2048
-    hop_size = 512
-    n_mels = data_shape[0]
-
-    """
-    win_length defines the width of each chunk in terms of samples
-
-    the duration of each chunk is win_length / sampling_rate
-    the number of chunks is #total_frames / hop_length
-    the overlap is win_length - hop_length / win_length
-
-    thus we can calculate the receptive field of the first layer by:
-        seconds = kernel_size * hop_size / sample_rate
-
-    or a single bin covers hop_size / sample_rate seconds of out data
-    """
-    mel_spectrogram = T.MelSpectrogram(
-        sample_rate=sample_rate,
-        n_fft=win_length*4,
-        win_length=win_length*4,
-        hop_length=hop_size*4,
-        center=True,
-        pad_mode="reflect",
-        power=2.0,
-        norm="slaney",
-        onesided=True,
-        n_mels=n_mels,
-        mel_scale="htk",
-    )
-
-    random_crop = transforms.RandomCrop((n_mels, data_shape[1]))
-
-    def select_file(original: Path):
-        new = original.parent / "wav_16k" / original.with_suffix(".wav").name
-
-        return new
-
-    playlist_to_genre = {
-        "18vUeZ9BdtMRNV6gI8RnR6": "Techno",
-        "0rvPxkmlJZ5EX4JXutyP6I": "Tech House",
-        "37i9dQZF1DWTU3Zl0elDUa": "90s House",
-        "6vDGVr652ztNWKZuHvsFvx": "Deep House",
-        "068WHS0zOWsqvn2uIBYb5D": "DnB",
-        "0ZOspi3XrshQrmVzmlQFx6": "Liquid DnB ",
-        "4aKW9X7zIju4ijCSL7MR7T": "Future Rave",
-    }
 
     dataset = MusicGenreDataset(
         data_dir=Path("/home/georg/Music/ADL/"),
-        num_classes=num_classes,
-        preprocess=mel_spectrogram,
-        transform=random_crop,
-        file_transform=select_file,
+        preprocess=create_spectrogram(win_length=2048 * 4),
+        transform=create_crop(data_shape),
+        file_transform=mp3_to_wav_location,
         dry_run=dry_run,
-        playlist_to_genre=playlist_to_genre
+        playlist_to_genre=sample_playlist_to_genre,
+        max_frames=16000*60
     )
+    num_classes = dataset.num_classes
 
     model = networks.ResNet(num_classes)
 
@@ -181,19 +132,21 @@ class TrainingRun:
         val_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
         test_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
 
-        print(f"Starting training for {self.epochs} epochs")
+        print(f"Starting training for {self.epochs} epoch")
 
+        pbar = tqdm(
+            unit="epochs",
+            total=10,
+            leave=False,
+            unit_scale=True
+        )
+        bar_step = 1/(len(self.train_loader) + len(self.val_loader))
         for epoch in range(self.epochs):
+            pbar.set_description(desc=f"Epoch {epoch + 1:3d}/{self.epochs}")
             epoch_timer = Timer().start()
 
             batch_losses = []
 
-            pbar = tqdm(
-                desc=f"Epoch {epoch:3d}/{self.epochs}",
-                unit="batches",
-                total=len(self.train_loader),
-                leave=False,
-            )
             for data, label in self.train_loader:
                 # Move to device
                 data = data.to(self.device)
@@ -215,7 +168,7 @@ class TrainingRun:
                 batch_losses.append(loss.item())
                 train_acc.update(outputs, label)
 
-                pbar.update()
+                pbar.update(bar_step)
 
             # validation
 
@@ -231,15 +184,16 @@ class TrainingRun:
                 val_losses.append(val_loss.item())
                 val_acc.update(pred, label)
 
+                pbar.update(bar_step)
+
             self.train_losses.append(np.array(batch_losses).mean())
             self.train_accuracies.append(float(train_acc.compute()))
             self.val_losses.append(np.array(val_losses).mean())
             self.val_accuracies.append(float(val_acc.compute()))
 
             # console output
-            pbar.close()
             print(
-                f"Epoch {epoch:3d}/{self.epochs}, "
+                f"Epoch {epoch + 1:3d}/{self.epochs}, "
                 f"train_loss: {self.train_losses[-1]:2.3f}, train_acc: {train_acc.compute():3.3f}, "
                 f"val_loss: {self.val_losses[-1]:2.3f}, val_acc: {val_acc.compute():3.3f}, "
                 f"in {epoch_timer.stop(False):2.2f}s"
@@ -306,6 +260,7 @@ class TrainingRun:
         ax3.tick_params(rotation=45)
         ax3.set_xticklabels(ax3.get_xticklabels(), ha="right")
         ax3.set_yticklabels(ax3.get_yticklabels(), va="top")
+        ax3.set(xlabel="predicted", ylabel="actual")
 
         lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
         lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
