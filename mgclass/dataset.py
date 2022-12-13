@@ -1,7 +1,9 @@
 import json
 from pathlib import Path
+from random import shuffle
 from typing import List, Dict
 
+import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -25,7 +27,8 @@ class MusicGenreDataset(Dataset):
         num_classes=10,
         dry_run=False,
         playlist_to_genre: Dict[str, str] = None, # should be playlistid: genre label,
-        max_frames=-1
+        max_frames=-1,
+        even_classes=True
     ):
         self.data_dir = data_dir
 
@@ -39,6 +42,7 @@ class MusicGenreDataset(Dataset):
         self.target_transform = target_transform
         self.file_transform = file_transform
         self.max_frames = max_frames
+        self.even_classes = even_classes
 
         with Timer("Dataset creation"):
 
@@ -94,8 +98,7 @@ class MusicGenreDataset(Dataset):
         return data, labels
 
     def create_dataset_from_playlist_genre(self, playlist_to_genre: Dict[str, str]) -> (List[Path], List[int]):
-        files = set()
-        labels = []
+        files_per_class = [[] for i in range(self.num_classes)]
         genre_to_label = {genre: i for i, genre in enumerate(self.genres)}
 
         duplicate = 0
@@ -112,18 +115,48 @@ class MusicGenreDataset(Dataset):
                     if self.file_transform is not None:
                         song_file = self.file_transform(song_file)
 
-                    if song_file in files:
+                    if song_file in files_per_class[label]:
                         duplicate += 1
                         continue
 
-                    files.add(song_file)
-                    labels.append(label)
+                    files_per_class[label].append(song_file)
+
+        all_files, labels = self.flatten_file_array(files_per_class)
 
         print(f"Preprocessing complete, found {duplicate} duplicates")
 
-        data = self.files_to_data(files)
+        data = self.files_to_data(all_files)
 
         return data, labels
+
+    def flatten_file_array(self, files_per_class):
+        if self.even_classes:
+            total_count = sum([len(class_files) for class_files in files_per_class])
+            min_class_size = min([len(class_files) for class_files in files_per_class])
+
+            print(f"Clamping dataset to {min_class_size} songs per class. "
+                  f"Removing {total_count - min_class_size * self.num_classes} songs.")
+
+            # shuffle the files so to randomly sample across all playlists for a given genre
+            for files in files_per_class:
+                shuffle(files)
+
+            all_files = [file
+                         for files in files_per_class
+                         for file in files[:min_class_size]]
+            labels = [i
+                      for i, files in enumerate(files_per_class)
+                      for file in files[:min_class_size]]
+
+        else:
+            all_files = [file
+                         for files in files_per_class
+                         for file in files]
+
+            labels = [i
+                      for i, files in enumerate(files_per_class)
+                      for file in files]
+        return all_files, labels
 
     def files_to_data(self, files):
         data = [None] * len(files)
