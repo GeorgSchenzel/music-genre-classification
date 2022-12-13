@@ -24,7 +24,8 @@ class MusicGenreDataset(Dataset):
         file_transform=None,
         num_classes=10,
         dry_run=False,
-        playlist_to_genre: Dict[str, str] = None # should be playlistid: genre label
+        playlist_to_genre: Dict[str, str] = None, # should be playlistid: genre label,
+        max_frames=-1
     ):
         self.data_dir = data_dir
 
@@ -37,99 +38,109 @@ class MusicGenreDataset(Dataset):
         self.transform = transform
         self.target_transform = target_transform
         self.file_transform = file_transform
-        self.num_classes = num_classes
-
-        if playlist_to_genre is not None:
-            print(f"Using genre from playlist source")
-            self.genres = list(set(playlist_to_genre.values()))
-
-        else:
-            print(f"Using most {self.num_classes} occurring genres from spotify api")
-            self.genres = self.aggregate_best_genres()
-
-        self.genres = sorted(self.genres)
+        self.max_frames = max_frames
 
         with Timer("Dataset creation"):
+
             if dry_run:
+                self.genres = sorted(self.aggregate_best_genres(num_classes))
+                self.num_classes = num_classes
                 self.data, self.labels = self.create_dry_run_dataset()
+
+            # get genres from this provided dict
             elif playlist_to_genre is not None:
+                print(f"Using genre from playlist source")
+                self.genres = sorted(set(playlist_to_genre.values()))
+                self.num_classes = len(self.genres)
                 self.data, self.labels = self.create_dataset_from_playlist_genre(playlist_to_genre)
+
             else:
+                print(f"Using most {num_classes} occurring genres from spotify api")
+                self.genres = sorted(self.aggregate_best_genres(num_classes))
+                self.num_classes = num_classes
                 self.data, self.labels = self.create_dataset_from_id3_genre()
 
     def create_dataset_from_id3_genre(self) -> (List[Path], List[int]):
-        data = []
+        files = []
         labels = []
 
         genre_to_label = {genre: i for i, genre in enumerate(self.genres)}
 
-        for datapoint in tqdm(self.spotdj_data.values(), desc="Creating Dataset"):
+        for datapoint in self.spotdj_data.values():
+            song_file = self.data_dir / datapoint["filename"]
+
+            # we need to look into the original mp3 for the metadata
+            # somehow mutagen can't read wav metadata
             try:
-                song_file = self.data_dir / datapoint["filename"]
-                original_file = song_file
-
-                if self.file_transform is not None:
-                    song_file = self.file_transform(song_file)
-
-                # we need to look into the original mp3 for the metadata
-                # somehow mutagen can't read wav metadata
-                mutagen_file = mutagen.File(original_file, easy=True)
-
-                if "genre" not in mutagen_file or len(mutagen_file["genre"]) == 0:
-                    continue
-
-                genre = mutagen_file["genre"][0]
-                if genre not in self.genres:
-                    continue
-
-                labels.append(genre_to_label[genre])
-
-                try:
-                    d, sample_rate = torchaudio.load(song_file)
-                except RuntimeError:
-                    continue
-
-                if self.preprocess:
-                    d = self.preprocess(d)
-
-                data.append(d)
-                self.ensure_enough_memory()
-
+                mutagen_file = mutagen.File(song_file, easy=True)
             except FileNotFoundError:
-                pass
+                continue
+
+            if "genre" not in mutagen_file or len(mutagen_file["genre"]) == 0:
+                continue
+
+            genre = mutagen_file["genre"][0]
+            if genre not in self.genres:
+                continue
+
+            if self.file_transform is not None:
+                song_file = self.file_transform(song_file)
+
+            files.append(song_file)
+            labels.append(genre_to_label[genre])
+
+        data = self.files_to_data(files)
 
         return data, labels
 
     def create_dataset_from_playlist_genre(self, playlist_to_genre: Dict[str, str]) -> (List[Path], List[int]):
-        data = []
+        files = set()
         labels = []
         genre_to_label = {genre: i for i, genre in enumerate(self.genres)}
 
+        duplicate = 0
         for i, (playlist_id, genre) in enumerate(playlist_to_genre.items()):
             genre = playlist_to_genre[playlist_id]
             playlist = self.playlist_data[playlist_id]
-
             label = genre_to_label[genre]
 
             m3u_file = self.data_dir / Path(playlist["m3u_file"])
-            playlist_size = sum(1 for _ in open(m3u_file, 'r'))
             with open(m3u_file, "r") as m3u:
-                for song_path in tqdm(m3u, total=playlist_size, desc=f"Processing Playlist ({i}/{len(playlist_to_genre.items())}) {playlist['m3u_file']}"):
+                for song_path in m3u:
                     song_file = self.data_dir / Path(song_path)
 
                     if self.file_transform is not None:
                         song_file = self.file_transform(song_file)
 
-                    d, sample_rate = torchaudio.load(song_file)
+                    if song_file in files:
+                        duplicate += 1
+                        continue
 
-                    if self.preprocess:
-                        d = self.preprocess(d)
-
+                    files.add(song_file)
                     labels.append(label)
-                    data.append(d)
-                    self.ensure_enough_memory()
+
+        print(f"Preprocessing complete, found {duplicate} duplicates")
+
+        data = self.files_to_data(files)
 
         return data, labels
+
+    def files_to_data(self, files):
+        data = [None] * len(files)
+        for i, file in enumerate(tqdm(files, desc="Creating dataset")):
+            try:
+                d, sample_rate = torchaudio.load(file, num_frames=self.max_frames)
+            except RuntimeError:
+                continue
+
+            if self.preprocess:
+                d = self.preprocess(d)
+
+            data[i] = d
+
+            self.ensure_enough_memory()
+
+        return data
 
     def create_dry_run_dataset(self) -> (List[Path], List[int]):
         data = []
@@ -151,7 +162,7 @@ class MusicGenreDataset(Dataset):
 
         return data, labels
 
-    def aggregate_best_genres(self) -> List[str]:
+    def aggregate_best_genres(self, num_classes) -> List[str]:
         spotify_genres = []
         for datapoint in self.spotdj_data.values():
             try:
@@ -167,7 +178,7 @@ class MusicGenreDataset(Dataset):
         return (
             pd.Series(spotify_genres)
             .value_counts(sort=True)
-            .head(self.num_classes)
+            .head(num_classes)
             .index.to_list()
         )
 
