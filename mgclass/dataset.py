@@ -1,4 +1,5 @@
 import json
+
 from pathlib import Path
 from random import shuffle
 from typing import List, Dict
@@ -170,19 +171,32 @@ class MusicGenreDataset(Dataset):
         return all_files, labels
 
     def files_to_data(self, files):
-        data = [None] * len(files)
-        for i, file in enumerate(tqdm(files, desc="Creating dataset")):
+        def file_to_data(f):
             try:
-                d, sample_rate = torchaudio.load(file, num_frames=self.max_frames)
+                d, sample_rate = torchaudio.load(f, num_frames=self.max_frames)
             except RuntimeError:
-                continue
+                return None
 
             if self.preprocess:
                 d = self.preprocess(d)
 
-            data[i] = d
+            return d
 
+        shape = file_to_data(files[0]).shape
+        data = [None] * len(files)
+
+        for i, file in enumerate(tqdm(files, desc="Creating dataset")):
+            data[i] = file_to_data(file)
             self.ensure_enough_memory()
+
+        # normalize the data
+        stats = StatsRecorder()
+
+        for d in data:
+            stats.update(d)
+
+        for i, d in enumerate(data):
+            data[i] = (d - stats.mean) / stats.std
 
         return data
 
@@ -264,3 +278,46 @@ class RepeatedLoader:
 
     def __len__(self):
         return self.repeat_count * len(self.loader)
+
+
+# taken and adapted from here
+# https://colab.research.google.com/github/enzokro/clck10/blob/master/_notebooks/2020-09-10-Normalizing-spectrograms-for-deep-learning.ipynb
+class StatsRecorder:
+    def __init__(self, red_dims=(1, 2)):
+        """Accumulates normalization statistics across mini-batches.
+        ref: http://notmatthancock.github.io/2017/03/23/simple-batch-stat-updates.html
+        """
+        self.red_dims = red_dims  # which mini-batch dimensions to average over
+        self.nobservations = 0  # running number of observations
+
+    def update(self, data):
+        """
+        data: ndarray, shape (nobservations, ndimensions)
+        """
+        # initialize stats and dimensions on first batch
+        if self.nobservations == 0:
+            self.mean = data.mean(dim=self.red_dims, keepdim=True)
+            self.std = data.std(dim=self.red_dims, keepdim=True)
+            self.nobservations = 1
+            self.ndimensions = data.shape[0]
+        else:
+            if data.shape[0] != self.ndimensions:
+                raise ValueError('Data dims do not match previous observations.')
+
+            # find mean of new mini batch
+            newmean = data.mean(dim=self.red_dims, keepdim=True)
+            newstd = data.std(dim=self.red_dims, keepdim=True)
+
+            # update number of observations
+            m = self.nobservations * 1.0
+            n = 1
+
+            # update running statistics
+            tmp = self.mean
+            self.mean = m / (m + n) * tmp + n / (m + n) * newmean
+            self.std = m / (m + n) * self.std ** 2 + n / (m + n) * newstd ** 2 + \
+                       m * n / (m + n) ** 2 * (tmp - newmean) ** 2
+            self.std = torch.sqrt(self.std)
+
+            # update total number of seen samples
+            self.nobservations += n
