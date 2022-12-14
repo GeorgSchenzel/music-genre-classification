@@ -36,23 +36,30 @@ class MusicRecNet(nn.Module):
         self.dropout2 = nn.Dropout2d(0.25)
         self.dropout3 = nn.Dropout2d(0.25)
         self.dropout4 = nn.Dropout(0.25)
-        self.fc1 = nn.Linear(71680, 128)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.bn3 = nn.BatchNorm2d(128)
+        self.bn4 = nn.BatchNorm1d(128)
+        self.fc1 = nn.Linear(25088, 128)
         self.fc2 = nn.Linear(128, num_classes)
 
     # x represents our data
     def forward(self, x):
         x = self.conv1(x)
         x = functional.relu(x)
+        x = self.bn1(x)
         x = functional.max_pool2d(x, 2)
         x = self.dropout1(x)
 
         x = self.conv2(x)
         x = functional.relu(x)
+        x = self.bn2(x)
         x = functional.max_pool2d(x, 2)
         x = self.dropout2(x)
 
         x = self.conv3(x)
         x = functional.relu(x)
+        x = self.bn3(x)
         x = functional.max_pool2d(x, 2)
         x = self.dropout3(x)
 
@@ -60,6 +67,7 @@ class MusicRecNet(nn.Module):
 
         x = self.fc1(x)
         x = functional.relu(x)
+        x = self.bn4(x)
         x = self.dropout4(x)
         x = self.fc2(x)
         x = functional.relu(x)
