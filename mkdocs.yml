@@ -1,3 +1,22 @@
 site_name: Music Genre Classification
 theme:
   name: material
+  palette:
+    scheme: slate
+  features:
+    - navigation.top
+
+nav:
+  - Data: ./experiments/0_data.ipynb
+  - Training: ./experiments/1_training.ipynb
+  - MusicRecnet: ./experiments/2_musicrecnet_sgd.ipynb
+
+plugins:
+  mkdocs-jupyter:
+    theme: dark
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/extra.js

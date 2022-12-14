@@ -2,3 +2,4 @@ black
 autoflake
 mkdocs-material
 mypy
+mkdocs-jupyter
