@@ -50,18 +50,22 @@ class MusicGenreDataset(Dataset):
 
         with Timer("Dataset creation"):
 
+            # Various ways of creating a dataset are provided
+            # A dry_run option is used for fast iteration to try out training code
             if dry_run:
                 self.genres = sorted(self.aggregate_best_genres(num_classes))
                 self.num_classes = num_classes
                 self.data, self.labels = self.create_dry_run_dataset()
 
-            # get genres from this provided dict
+            # when this dict is provided we assign each song
+            # the label based on from which playlist it originates from
             elif playlist_to_genre is not None:
                 print(f"Using genre from playlist source")
                 self.genres = sorted(set(playlist_to_genre.values()))
                 self.num_classes = len(self.genres)
                 self.data, self.labels = self.create_dataset_from_playlist_genre(playlist_to_genre)
 
+            # as default we use the mp3 metadata to extrac genre information
             else:
                 print(f"Using most {num_classes} occurring genres from spotify api")
                 self.genres = sorted(self.aggregate_best_genres(num_classes))
@@ -105,6 +109,7 @@ class MusicGenreDataset(Dataset):
         files_per_class = [[] for i in range(self.num_classes)]
         genre_to_label = {genre: i for i, genre in enumerate(self.genres)}
 
+        # first we aggregate all files and genres
         for i, (playlist_id, genre) in enumerate(playlist_to_genre.items()):
             genre = playlist_to_genre[playlist_id]
             playlist = self.playlist_data[playlist_id]
@@ -125,7 +130,8 @@ class MusicGenreDataset(Dataset):
                         continue
 
                     files_per_class[label].append(song_file)
-
+        
+        # then we can easier perform further processing on the files
         all_files, labels = self.flatten_file_array(files_per_class)
 
         print(f"Preprocessing complete")
@@ -183,12 +189,12 @@ class MusicGenreDataset(Dataset):
             data[i] = file_to_data(file)
             self.ensure_enough_memory()
 
-        # normalize the data
         stats = StatsRecorder()
 
         for d in data:
             stats.update(d)
 
+        # normalizing the data across the full dataset imrpoved the models performance a lot
         for i, d in enumerate(data):
             data[i] = (d - stats.mean) / stats.std
 
@@ -217,6 +223,7 @@ class MusicGenreDataset(Dataset):
         return data, labels
 
     def aggregate_best_genres(self, num_classes) -> List[str]:
+        """Select only the most common genres"""
         spotify_genres = []
         for datapoint in self.spotdj_data.values():
             try:
@@ -264,6 +271,8 @@ class MusicGenreDataset(Dataset):
 
 
 class RepeatedLoader:
+    """Increase the actual dataset size by running thorugh the full
+    dataset multiple times."""
     def __init__(self, loader: DataLoader, repeat_count: int):
         self.loader = loader
         self.repeat_count = repeat_count

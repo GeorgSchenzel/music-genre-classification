@@ -8,6 +8,13 @@ class TimerError(Exception):
 
 @dataclass
 class Timer:
+    """
+    A simple utility to time a section of code.
+
+    Usage:
+    with Timer("Task"):
+        ...
+    """
 
     label: str
 
