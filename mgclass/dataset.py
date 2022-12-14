@@ -45,6 +45,9 @@ class MusicGenreDataset(Dataset):
         self.max_frames = max_frames
         self.even_classes = even_classes
 
+        # Note: this is only usable when using genres from playlists and even_classes = True
+        self.class_size = None
+
         with Timer("Dataset creation"):
 
             if dry_run:
@@ -148,6 +151,7 @@ class MusicGenreDataset(Dataset):
 
             print(f"Clamping dataset to {min_class_size} songs per class. "
                   f"Removing {total_count - min_class_size * self.num_classes} songs.")
+            self.class_size = min_class_size
 
             # shuffle the files so to randomly sample across all playlists for a given genre
             for files in files_per_class:
@@ -217,6 +221,8 @@ class MusicGenreDataset(Dataset):
 
                 pbar.update()
         pbar.close()
+
+        self.class_size = 10
 
         return data, labels
 

@@ -6,6 +6,7 @@ import pandas as pd
 import torch.nn as nn
 import torch
 import torch.optim as optim
+from torch.utils.data import Subset
 from torch.utils.data import DataLoader
 from torchmetrics import Accuracy, ConfusionMatrix
 
@@ -29,7 +30,8 @@ def some_experiment():
         file_transform=mp3_to_wav_location,
         dry_run=dry_run,
         playlist_to_genre=sample_playlist_to_genre,
-        max_frames=16000*60
+        max_frames=16000*60,
+        even_classes=True
     )
     num_classes = dataset.num_classes
 
@@ -38,6 +40,7 @@ def some_experiment():
     run = TrainingRun(dataset, model, epochs=10, dry_run=dry_run, repeat_count=10)
     run.summary()
     run.start()
+    run.test()
     run.plot()
 
 
@@ -63,8 +66,8 @@ class TrainingRun:
         self._prepare_data_loaders()
 
         self.loss_fn = nn.CrossEntropyLoss()
-        # self.optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-        self.optimizer = optim.Adam(model.parameters(), lr=0.0001)
+        self.optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        #self.optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
         self.already_ran = False
 
@@ -90,16 +93,29 @@ class TrainingRun:
             self._train()
 
     def _prepare_data_loaders(self):
-        train_size = int(0.8 * len(self.dataset))
-        val_size = (len(self.dataset) - train_size) // 2
-        test_size = len(self.dataset) - train_size - val_size
-        (
-            self.train_dataset,
-            self.val_dataset,
-            self.test_dataset,
-        ) = torch.utils.data.random_split(
-            self.dataset, [train_size, val_size, test_size]
-        )
+        def create_indices(class_size, num_classes, per_class, offset):
+            return [class_size * c + s + offset
+                    for s in range(per_class)
+                    for c in range(num_classes)]
+
+        if self.dataset.class_size is None:
+            raise Exception("Dataset should be evenly sized. Use even_classes=True")
+
+        # in samples per class
+        train_size = int(0.8 * self.dataset.class_size)
+        val_size = (self.dataset.class_size - train_size) // 2
+        test_size = self.dataset.class_size - train_size - val_size
+        self.train_dataset = Subset(
+            self.dataset,
+            create_indices(self.dataset.class_size, self.dataset.num_classes, train_size, offset=0))
+
+        self.val_dataset = Subset(
+            self.dataset,
+            create_indices(self.dataset.class_size, self.dataset.num_classes, val_size, offset=train_size))
+
+        self.test_dataset = Subset(
+            self.dataset,
+            create_indices(self.dataset.class_size, self.dataset.num_classes, test_size, offset=train_size + val_size))
 
         self.train_loader = DataLoader(
             self.train_dataset,
