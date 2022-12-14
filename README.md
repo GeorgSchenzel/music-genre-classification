@@ -2,6 +2,8 @@
 
 A pipeline for training a neural network for music genre classification.
 
+See `./assignment2.md` for my time spent.
+
 ## Requirements
 
 - python3
