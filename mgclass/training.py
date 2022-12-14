@@ -17,6 +17,7 @@ from matplotlib import pyplot as plt
 from tqdm.autonotebook import tqdm, trange
 
 from mgclass.utils import create_spectrogram, mp3_to_wav_location, sample_playlist_to_genre, create_crop
+from textwrap import dedent
 
 
 def some_experiment():
@@ -53,6 +54,7 @@ class TrainingRun:
         batch_size=16,
         repeat_count=1,
         dry_run=False,
+        optimizer=None
     ):
         self.dataset = dataset
         self.model = model
@@ -66,8 +68,7 @@ class TrainingRun:
         self._prepare_data_loaders()
 
         self.loss_fn = nn.CrossEntropyLoss()
-        self.optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-        #self.optimizer = optim.Adam(model.parameters(), lr=0.0001)
+        self.optimizer = optimizer if optimizer is not None else optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
         self.already_ran = False
 
@@ -91,6 +92,8 @@ class TrainingRun:
 
         with Timer("Training"):
             self._train()
+
+        print("")
 
     def _prepare_data_loaders(self):
         def create_indices(class_size, num_classes, per_class, offset):
@@ -154,14 +157,14 @@ class TrainingRun:
         train_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
         val_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
 
-        print(f"Starting training for {self.epochs} epoch")
-
         pbar = tqdm(
             unit="epochs",
             total=self.epochs,
             leave=False,
             unit_scale=True
         )
+
+        print(f"Starting training for {self.epochs} epochs")
         bar_step = 1/(len(self.train_loader) + len(self.val_loader))
         for epoch in range(self.epochs):
             pbar.set_description(desc=f"Epoch {epoch + 1:3d}/{self.epochs}")
@@ -261,45 +264,56 @@ class TrainingRun:
             y_pred.extend(pred.tolist())
 
         self.confusion_matrix = cm.compute().cpu().numpy()
+        self.test_acc = test_acc.compute()
 
         print(
-            f"test_loss: {np.array(test_losses).mean():2.3f}, test_acc: {test_acc.compute():3.3f}"
+            f"test_loss: {np.array(test_losses).mean():2.3f}, test_acc: {self.test_acc:3.3f}"
         )
 
-    def plot(self, title="Training Run"):
+    def plot(self, title="Training Run", additional_info=""):
         xx = np.arange(self.epochs)
 
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+        fig, ((ax_text, ax_cm), (ax_acc, ax_loss)) = plt.subplots(2, 2)
         fig.suptitle(title)
 
-        ax1.set_title("Accuracy")
-        ax1.set(xlabel="epoch", ylabel="accuracy")
-        ax1.plot(xx, self.train_accuracies, label="train")
-        ax1.plot(xx, self.val_accuracies, label="validate")
-        ax1.set_ylim(bottom=0, top=1)
+        ax_text.set_axis_off()
+        text = dedent(f"""\
+                Summary:
+                Model: {type(self.model).__name__}
+                Optimizer: {type(self.optimizer).__name__}
+                
+                Effective dataset size: {len(self.dataset)*self.repeat_count} samples
+                Test accuracy: {self.test_acc:3.3f}
+                
+                {additional_info}
+                """)
+        ax_text.text(0.1, 0.9, text, verticalalignment="top")
 
-        ax2.set_title("Loss")
-        ax2.set(xlabel="epoch", ylabel="loss")
-        ax2.plot(xx, self.train_losses, label="train")
-        ax2.plot(xx, self.val_losses, label="validate")
-        ax2.set_ylim(bottom=0)
-
-
-        ax3.set_title("Confusion Matrix")
+        ax_cm.set_title("Confusion Matrix")
         df_cm = pd.DataFrame(
             self.confusion_matrix,
             index=[i for i in self.dataset.genres],
             columns=[i for i in self.dataset.genres],
         )
-        sn.heatmap(df_cm, annot=True, ax=ax3, cbar=False, fmt='d')
-        ax3.tick_params(rotation=45)
-        ax3.set_xticklabels(ax3.get_xticklabels(), ha="right")
-        ax3.set_yticklabels(ax3.get_yticklabels(), va="top")
-        ax3.set(xlabel="predicted", ylabel="actual")
+        sn.heatmap(df_cm, annot=True, ax=ax_cm, cbar=False, fmt='d')
+        ax_cm.tick_params(rotation=45)
+        ax_cm.set_xticklabels(ax_cm.get_xticklabels(), ha="right")
+        ax_cm.set_yticklabels(ax_cm.get_yticklabels(), va="top")
+        ax_cm.set(xlabel="predicted", ylabel="actual")
 
-        lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
-        lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
-        fig.legend(lines, labels)
+        ax_acc.set_title("Accuracy")
+        ax_acc.set(xlabel="epoch", ylabel="accuracy")
+        ax_acc.plot(xx, self.train_accuracies, label="train")
+        ax_acc.plot(xx, self.val_accuracies, label="validate")
+        ax_acc.set_ylim(bottom=0, top=1)
+        ax_acc.legend()
+
+        ax_loss.set_title("Loss")
+        ax_loss.set(xlabel="epoch", ylabel="loss")
+        ax_loss.plot(xx, self.train_losses, label="train")
+        ax_loss.plot(xx, self.val_losses, label="validate")
+        ax_loss.set_ylim(bottom=0)
+        ax_loss.legend()
 
         fig.set_size_inches(10, 8)
         plt.tight_layout()

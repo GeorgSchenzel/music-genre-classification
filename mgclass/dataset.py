@@ -126,19 +126,9 @@ class MusicGenreDataset(Dataset):
 
                     files_per_class[label].append(song_file)
 
-        # show duplicates
-        for i, files1 in enumerate(files_per_class):
-            for j, files2 in enumerate(files_per_class):
-                if i >= j:
-                    continue
-
-                duplicates = len([f for f in files1 if f in files2])
-                if duplicates > 0:
-                    print(f"Dups for {i}-{j}: {duplicates:3d}")
-
         all_files, labels = self.flatten_file_array(files_per_class)
 
-        print(f"Preprocessing complete")
+        print(f"Preprocessing complete\n")
 
         data = self.files_to_data(all_files)
 
@@ -189,7 +179,7 @@ class MusicGenreDataset(Dataset):
         shape = file_to_data(files[0]).shape
         data = [None] * len(files)
 
-        for i, file in enumerate(tqdm(files, desc="Creating dataset")):
+        for i, file in enumerate(tqdm(files, desc="Creating dataset", leave=True)):
             data[i] = file_to_data(file)
             self.ensure_enough_memory()
 
@@ -201,6 +191,9 @@ class MusicGenreDataset(Dataset):
 
         for i, d in enumerate(data):
             data[i] = (d - stats.mean) / stats.std
+
+        # for prettier jupyter nb
+        print("\n")
 
         return data
 
