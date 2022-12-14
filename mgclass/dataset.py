@@ -128,7 +128,7 @@ class MusicGenreDataset(Dataset):
 
         all_files, labels = self.flatten_file_array(files_per_class)
 
-        print(f"Preprocessing complete\n")
+        print(f"Preprocessing complete")
 
         data = self.files_to_data(all_files)
 
@@ -191,9 +191,6 @@ class MusicGenreDataset(Dataset):
 
         for i, d in enumerate(data):
             data[i] = (d - stats.mean) / stats.std
-
-        # for prettier jupyter nb
-        print("\n")
 
         return data
 

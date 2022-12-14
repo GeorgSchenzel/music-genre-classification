@@ -54,7 +54,9 @@ class TrainingRun:
         batch_size=16,
         repeat_count=1,
         dry_run=False,
-        optimizer=None
+        optimizer=None,
+        patience=None,
+        save_path: Path = None
     ):
         self.dataset = dataset
         self.model = model
@@ -69,6 +71,10 @@ class TrainingRun:
 
         self.loss_fn = nn.CrossEntropyLoss()
         self.optimizer = optimizer if optimizer is not None else optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        self.patience = patience
+        self.save_path = save_path
+        if self.save_path is not None:
+            self.save_path.parent.mkdir(parents=True, exist_ok=True)
 
         self.already_ran = False
 
@@ -85,13 +91,13 @@ class TrainingRun:
         print(f"Test Size: {len(self.test_dataset)}")
         print(f"Genres: {self.dataset.genres}")
 
-    def start(self):
+    def start(self, silent=False):
         if self.already_ran:
             raise Exception("Training already ran.")
         self.already_ran = True
 
         with Timer("Training"):
-            self._train()
+            self._train(silent)
 
         print("")
 
@@ -152,22 +158,30 @@ class TrainingRun:
         self.train_loader = RepeatedLoader(self.train_loader, self.repeat_count)
         self.val_loader = RepeatedLoader(self.val_loader, self.repeat_count)
 
-    def _train(self):
+    def _train(self, silent):
         num_classes = self.dataset.num_classes
         train_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
         val_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
+        val_loss_best = np.infty
+        patience_counter = 0
 
         pbar = tqdm(
+            desc=f"Epoch {1:3d}/{self.epochs}",
             unit="epochs",
             total=self.epochs,
-            leave=False,
+            leave=True,
             unit_scale=True
         )
 
-        print(f"Starting training for {self.epochs} epochs")
+        print(f"Training for {self.epochs} epochs")
         bar_step = 1/(len(self.train_loader) + len(self.val_loader))
         for epoch in range(self.epochs):
-            pbar.set_description(desc=f"Epoch {epoch + 1:3d}/{self.epochs}")
+        
+            if epoch > 0:
+                pbar.set_description(desc=f"Epoch {epoch + 1:3d}/{self.epochs}, "
+                                          f"train_acc: {self.train_accuracies[-1]:1.3f}, "
+                                          f"val_acc: {self.val_accuracies[-1]:1.3f}")
+
             epoch_timer = Timer().start()
 
             batch_losses = []
@@ -217,15 +231,41 @@ class TrainingRun:
             self.val_accuracies.append(float(val_acc.compute()))
 
             # console output
-            print(
-                f"Epoch {epoch + 1:3d}/{self.epochs}, "
-                f"train_loss: {self.train_losses[-1]:2.3f}, train_acc: {train_acc.compute():1.3f}, "
-                f"val_loss: {self.val_losses[-1]:2.3f}, val_acc: {val_acc.compute():1.3f}, "
-                f"in {epoch_timer.stop(False):2.2f}s"
-            )
+            if not silent:
+                print(
+                    f"Epoch {epoch + 1:3d}/{self.epochs}, "
+                    f"train_loss: {self.train_losses[-1]:2.3f}, train_acc: {self.train_accuracies[-1]:1.3f}, "
+                    f"val_loss: {self.val_losses[-1]:2.3f}, val_acc: {self.val_accuracies[-1]:1.3f}, "
+                    f"in {epoch_timer.stop(False):2.2f}s"
+                )
+
+            # save best performing model with accuracy
+            if self.val_losses[-1] < val_loss_best:
+                if self.save_path is not None:
+                    torch.save({
+                        "epoch": epoch,
+                        "model_state_dict": self.model.state_dict(),
+                        "optimizer_state_dict": self.optimizer.state_dict(),
+                        "loss": self.val_losses[-1],
+                        "accuracy": self.val_accuracies[-1]
+                    }, self.save_path)
+
+                val_loss_best = self.val_losses[-1]
+
+            if self.patience is not None and self.patience > 0:
+                if self.val_losses[-1] > val_loss_best:
+                    patience_counter += 1
+                    if patience_counter >= self.patience:
+                        print(f"Early stopped at epoch {epoch+1}")
+                        break
+
+                else:
+                    patience_counter = 0
 
             train_acc.reset()
             val_acc.reset()
+
+        pbar.close()
 
     def test(self):
         num_classes = self.dataset.num_classes
@@ -239,39 +279,41 @@ class TrainingRun:
         )
 
         # remove the augmentation for test
+        dataset_transform = self.dataset.transform
         self.dataset.transform = None
 
-        for data, label in self.test_loader:
-            # Move to device
-            data = data.to(self.device)
-            label = label.to(self.device)
+        try:
+            for data, label in self.test_loader:
+                # Move to device
+                data = data.to(self.device)
+                label = label.to(self.device)
 
-            count = 0
-            pred = torch.zeros((1, num_classes)).to(self.device)
-            for i in range(0, data.shape[3] - 128, 128):
-                count += 1
-                pred += self.model(data[:, :, :, i:i + 128])
+                count = 0
+                pred = torch.zeros((1, num_classes)).to(self.device)
+                for i in range(0, data.shape[3] - 128, 128):
+                    count += 1
+                    pred += self.model(data[:, :, :, i:i + 128])
 
-            pred /= count
+                pred /= count
 
-            test_loss = self.loss_fn(pred, label)
-            test_losses.append(test_loss.item())
-            test_acc.update(pred, label)
+                test_loss = self.loss_fn(pred, label)
+                test_losses.append(test_loss.item())
+                test_acc.update(pred, label)
 
-            cm.update(pred, label)
+                cm.update(pred, label)
 
-            y_true.extend(label.tolist())
-            y_pred.extend(pred.tolist())
+                y_true.extend(label.tolist())
+                y_pred.extend(pred.tolist())
+        except Exception:
+            raise
+        finally:
+            self.dataset.transform = dataset_transform
 
         self.confusion_matrix = cm.compute().cpu().numpy()
         self.test_acc = test_acc.compute()
 
-        print(
-            f"test_loss: {np.array(test_losses).mean():2.3f}, test_acc: {self.test_acc:3.3f}"
-        )
-
     def plot(self, title="Training Run", additional_info=""):
-        xx = np.arange(self.epochs)
+        xx = np.arange(min(self.epochs, len(self.train_accuracies))) + 1
 
         fig, ((ax_text, ax_cm), (ax_acc, ax_loss)) = plt.subplots(2, 2)
         fig.suptitle(title)
@@ -281,11 +323,12 @@ class TrainingRun:
                 Summary:
                 Model: {type(self.model).__name__}
                 Optimizer: {type(self.optimizer).__name__}
-                
+                Epochs: {len(self.train_losses)}/{self.epochs}
                 Effective dataset size: {len(self.dataset)*self.repeat_count} samples
-                Test accuracy: {self.test_acc:3.3f}
                 
                 {additional_info}
+                
+                Test accuracy: {self.test_acc:3.3f}
                 """)
         ax_text.text(0.1, 0.9, text, verticalalignment="top")
 
@@ -300,11 +343,14 @@ class TrainingRun:
         ax_cm.set_xticklabels(ax_cm.get_xticklabels(), ha="right")
         ax_cm.set_yticklabels(ax_cm.get_yticklabels(), va="top")
         ax_cm.set(xlabel="predicted", ylabel="actual")
+        ax_acc.set_xlim(left=1, right=self.epochs)
 
         ax_acc.set_title("Accuracy")
         ax_acc.set(xlabel="epoch", ylabel="accuracy")
         ax_acc.plot(xx, self.train_accuracies, label="train")
         ax_acc.plot(xx, self.val_accuracies, label="validate")
+        ax_acc.axhline(y=max(self.val_accuracies), color="gray", linestyle='--')
+        ax_acc.set_xlim(left=1, right=self.epochs)
         ax_acc.set_ylim(bottom=0, top=1)
         ax_acc.legend()
 
@@ -312,6 +358,7 @@ class TrainingRun:
         ax_loss.set(xlabel="epoch", ylabel="loss")
         ax_loss.plot(xx, self.train_losses, label="train")
         ax_loss.plot(xx, self.val_losses, label="validate")
+        ax_loss.axhline(y=min(self.val_losses), color="gray", linestyle='--')
         ax_loss.set_ylim(bottom=0)
         ax_loss.legend()
 

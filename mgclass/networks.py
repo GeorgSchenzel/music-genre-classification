@@ -77,9 +77,9 @@ class MusicRecNet(nn.Module):
 
 
 # noinspection DuplicatedCode
-class MyNet(nn.Module):
+class MgcNet(nn.Module):
     def __init__(self, num_classes):
-        super(MyNet, self).__init__()
+        super(MgcNet, self).__init__()
         self.conv1a = nn.Conv2d(1, 32, 3, 1)
         self.conv1b = nn.Conv2d(32, 32, 3, 1)
         self.conv2a = nn.Conv2d(32, 64, 3, 1)
