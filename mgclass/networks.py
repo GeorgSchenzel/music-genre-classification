@@ -10,7 +10,9 @@ class ResNet(nn.Module):
 
         self.base = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
 
-        self.base.conv1 = nn.Conv2d(1, 64, first_layer_kernel, (2, 2), (3, 3), bias=False)
+        self.base.conv1 = nn.Conv2d(
+            1, 64, first_layer_kernel, (2, 2), (3, 3), bias=False
+        )
 
         self.base.fc = nn.Sequential(
             nn.Linear(self.base.fc.in_features, 128),

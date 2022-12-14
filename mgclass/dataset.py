@@ -4,7 +4,6 @@ from pathlib import Path
 from random import shuffle
 from typing import List, Dict
 
-import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -27,9 +26,9 @@ class MusicGenreDataset(Dataset):
         file_transform=None,
         num_classes=10,
         dry_run=False,
-        playlist_to_genre: Dict[str, str] = None, # should be playlistid: genre label,
+        playlist_to_genre: Dict[str, str] = None,  # should be playlistid: genre label,
         max_frames=-1,
-        even_classes=True
+        even_classes=True,
     ):
         self.data_dir = data_dir
 
@@ -63,7 +62,9 @@ class MusicGenreDataset(Dataset):
                 print(f"Using genre from playlist source")
                 self.genres = sorted(set(playlist_to_genre.values()))
                 self.num_classes = len(self.genres)
-                self.data, self.labels = self.create_dataset_from_playlist_genre(playlist_to_genre)
+                self.data, self.labels = self.create_dataset_from_playlist_genre(
+                    playlist_to_genre
+                )
 
             # as default we use the mp3 metadata to extrac genre information
             else:
@@ -105,7 +106,9 @@ class MusicGenreDataset(Dataset):
 
         return data, labels
 
-    def create_dataset_from_playlist_genre(self, playlist_to_genre: Dict[str, str]) -> (List[Path], List[int]):
+    def create_dataset_from_playlist_genre(
+        self, playlist_to_genre: Dict[str, str]
+    ) -> (List[Path], List[int]):
         files_per_class = [[] for i in range(self.num_classes)]
         genre_to_label = {genre: i for i, genre in enumerate(self.genres)}
 
@@ -130,7 +133,7 @@ class MusicGenreDataset(Dataset):
                         continue
 
                     files_per_class[label].append(song_file)
-        
+
         # then we can easier perform further processing on the files
         all_files, labels = self.flatten_file_array(files_per_class)
 
@@ -145,29 +148,29 @@ class MusicGenreDataset(Dataset):
             total_count = sum([len(class_files) for class_files in files_per_class])
             min_class_size = min([len(class_files) for class_files in files_per_class])
 
-            print(f"Clamping dataset to {min_class_size} songs per class. "
-                  f"Removing {total_count - min_class_size * self.num_classes} songs.")
+            print(
+                f"Clamping dataset to {min_class_size} songs per class. "
+                f"Removing {total_count - min_class_size * self.num_classes} songs."
+            )
             self.class_size = min_class_size
 
             # shuffle the files so to randomly sample across all playlists for a given genre
             for files in files_per_class:
                 shuffle(files)
 
-            all_files = [file
-                         for files in files_per_class
-                         for file in files[:min_class_size]]
-            labels = [i
-                      for i, files in enumerate(files_per_class)
-                      for file in files[:min_class_size]]
+            all_files = [
+                file for files in files_per_class for file in files[:min_class_size]
+            ]
+            labels = [
+                i
+                for i, files in enumerate(files_per_class)
+                for file in files[:min_class_size]
+            ]
 
         else:
-            all_files = [file
-                         for files in files_per_class
-                         for file in files]
+            all_files = [file for files in files_per_class for file in files]
 
-            labels = [i
-                      for i, files in enumerate(files_per_class)
-                      for file in files]
+            labels = [i for i, files in enumerate(files_per_class) for file in files]
         return all_files, labels
 
     def files_to_data(self, files):
@@ -182,7 +185,7 @@ class MusicGenreDataset(Dataset):
 
             return d
 
-        shape = file_to_data(files[0]).shape
+        file_to_data(files[0]).shape
         data = [None] * len(files)
 
         for i, file in enumerate(tqdm(files, desc="Creating dataset", leave=True)):
@@ -273,6 +276,7 @@ class MusicGenreDataset(Dataset):
 class RepeatedLoader:
     """Increase the actual dataset size by running thorugh the full
     dataset multiple times."""
+
     def __init__(self, loader: DataLoader, repeat_count: int):
         self.loader = loader
         self.repeat_count = repeat_count
@@ -307,7 +311,7 @@ class StatsRecorder:
             self.ndimensions = data.shape[0]
         else:
             if data.shape[0] != self.ndimensions:
-                raise ValueError('Data dims do not match previous observations.')
+                raise ValueError("Data dims do not match previous observations.")
 
             # find mean of new mini batch
             newmean = data.mean(dim=self.red_dims, keepdim=True)
@@ -320,8 +324,11 @@ class StatsRecorder:
             # update running statistics
             tmp = self.mean
             self.mean = m / (m + n) * tmp + n / (m + n) * newmean
-            self.std = m / (m + n) * self.std ** 2 + n / (m + n) * newstd ** 2 + \
-                       m * n / (m + n) ** 2 * (tmp - newmean) ** 2
+            self.std = (
+                m / (m + n) * self.std**2
+                + n / (m + n) * newstd**2
+                + m * n / (m + n) ** 2 * (tmp - newmean) ** 2
+            )
             self.std = torch.sqrt(self.std)
 
             # update total number of seen samples

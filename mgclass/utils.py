@@ -19,7 +19,7 @@ sample_playlist_to_genre = {
     "3ZG1CAQ811cCiSce3J0uz5": "Psytrance",
     "502B3oSddAW7czuMMvxITT": "Future Rave",
     "5NlU4dHwuK9JrhpuwYGllf": "Liquid DnB",
-    "7mwPa6HjqoiUrsk3C2Hitk": "Techno"
+    "7mwPa6HjqoiUrsk3C2Hitk": "Techno",
 }
 
 
@@ -59,6 +59,7 @@ def create_spectrogram(sample_rate=16000, n_mels=128, win_length=1024, overlap=0
         n_mels=n_mels,
         mel_scale="htk",
     )
+
 
 def create_crop(shape):
     return v_transforms.RandomCrop(shape)

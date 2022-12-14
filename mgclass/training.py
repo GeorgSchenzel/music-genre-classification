@@ -10,13 +10,18 @@ from torch.utils.data import Subset
 from torch.utils.data import DataLoader
 from torchmetrics import Accuracy, ConfusionMatrix
 
-from mgclass import networks, analysis
+from mgclass import networks
 from mgclass import MusicGenreDataset, RepeatedLoader
 from mgclass.timer import Timer
 from matplotlib import pyplot as plt
-from tqdm.autonotebook import tqdm, trange
+from tqdm.autonotebook import tqdm
 
-from mgclass.utils import create_spectrogram, mp3_to_wav_location, sample_playlist_to_genre, create_crop
+from mgclass.utils import (
+    create_spectrogram,
+    mp3_to_wav_location,
+    sample_playlist_to_genre,
+    create_crop,
+)
 from textwrap import dedent
 
 
@@ -31,8 +36,8 @@ def some_experiment():
         file_transform=mp3_to_wav_location,
         dry_run=dry_run,
         playlist_to_genre=sample_playlist_to_genre,
-        max_frames=16000*60,
-        even_classes=True
+        max_frames=16000 * 60,
+        even_classes=True,
     )
     num_classes = dataset.num_classes
 
@@ -56,7 +61,7 @@ class TrainingRun:
         dry_run=False,
         optimizer=None,
         patience=None,
-        save_path: Path = None
+        save_path: Path = None,
     ):
         self.dataset = dataset
         self.model = model
@@ -70,7 +75,11 @@ class TrainingRun:
         self._prepare_data_loaders()
 
         self.loss_fn = nn.CrossEntropyLoss()
-        self.optimizer = optimizer if optimizer is not None else optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        self.optimizer = (
+            optimizer
+            if optimizer is not None
+            else optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        )
         self.patience = patience
         self.save_path = save_path
         if self.save_path is not None:
@@ -103,9 +112,11 @@ class TrainingRun:
 
     def _prepare_data_loaders(self):
         def create_indices(class_size, num_classes, per_class, offset):
-            return [class_size * c + s + offset
-                    for s in range(per_class)
-                    for c in range(num_classes)]
+            return [
+                class_size * c + s + offset
+                for s in range(per_class)
+                for c in range(num_classes)
+            ]
 
         if self.dataset.class_size is None:
             raise Exception("Dataset should be evenly sized. Use even_classes=True")
@@ -116,15 +127,30 @@ class TrainingRun:
         test_size = self.dataset.class_size - train_size - val_size
         self.train_dataset = Subset(
             self.dataset,
-            create_indices(self.dataset.class_size, self.dataset.num_classes, train_size, offset=0))
+            create_indices(
+                self.dataset.class_size, self.dataset.num_classes, train_size, offset=0
+            ),
+        )
 
         self.val_dataset = Subset(
             self.dataset,
-            create_indices(self.dataset.class_size, self.dataset.num_classes, val_size, offset=train_size))
+            create_indices(
+                self.dataset.class_size,
+                self.dataset.num_classes,
+                val_size,
+                offset=train_size,
+            ),
+        )
 
         self.test_dataset = Subset(
             self.dataset,
-            create_indices(self.dataset.class_size, self.dataset.num_classes, test_size, offset=train_size + val_size))
+            create_indices(
+                self.dataset.class_size,
+                self.dataset.num_classes,
+                test_size,
+                offset=train_size + val_size,
+            ),
+        )
 
         self.train_loader = DataLoader(
             self.train_dataset,
@@ -152,7 +178,7 @@ class TrainingRun:
             shuffle=False,
             num_workers=8,
             prefetch_factor=2,
-            pin_memory=True
+            pin_memory=True,
         )
 
         self.train_loader = RepeatedLoader(self.train_loader, self.repeat_count)
@@ -170,18 +196,20 @@ class TrainingRun:
             unit="epochs",
             total=self.epochs,
             leave=True,
-            unit_scale=True
+            unit_scale=True,
         )
 
         print(f"Training for {self.epochs} epochs")
-        bar_step = 1/(len(self.train_loader) + len(self.val_loader))
+        bar_step = 1 / (len(self.train_loader) + len(self.val_loader))
         for epoch in range(self.epochs):
-        
+
             if epoch > 0:
-                pbar.set_description(desc=f"Epoch {epoch + 1:3d}/{self.epochs}, "
-                                          f"train_acc: {self.train_accuracies[-1]:1.3f}, "
-                                          f"val_acc: {self.val_accuracies[-1]:1.3f}, "
-                                          f"patience: {patience_counter}")
+                pbar.set_description(
+                    desc=f"Epoch {epoch + 1:3d}/{self.epochs}, "
+                    f"train_acc: {self.train_accuracies[-1]:1.3f}, "
+                    f"val_acc: {self.val_accuracies[-1]:1.3f}, "
+                    f"patience: {patience_counter}"
+                )
 
             epoch_timer = Timer().start()
 
@@ -243,13 +271,16 @@ class TrainingRun:
             # save best performing model with accuracy
             if self.val_losses[-1] < val_loss_best:
                 if self.save_path is not None:
-                    torch.save({
-                        "epoch": epoch,
-                        "model_state_dict": self.model.state_dict(),
-                        "optimizer_state_dict": self.optimizer.state_dict(),
-                        "loss": self.val_losses[-1],
-                        "accuracy": self.val_accuracies[-1]
-                    }, self.save_path)
+                    torch.save(
+                        {
+                            "epoch": epoch,
+                            "model_state_dict": self.model.state_dict(),
+                            "optimizer_state_dict": self.optimizer.state_dict(),
+                            "loss": self.val_losses[-1],
+                            "accuracy": self.val_accuracies[-1],
+                        },
+                        self.save_path,
+                    )
 
                 val_loss_best = self.val_losses[-1]
 
@@ -293,7 +324,7 @@ class TrainingRun:
                 pred = torch.zeros((1, num_classes)).to(self.device)
                 for i in range(0, data.shape[3] - 128, 128):
                     count += 1
-                    pred += self.model(data[:, :, :, i:i + 128])
+                    pred += self.model(data[:, :, :, i : i + 128])
 
                 pred /= count
 
@@ -320,7 +351,8 @@ class TrainingRun:
         fig.suptitle(title)
 
         ax_text.set_axis_off()
-        text = dedent(f"""\
+        text = dedent(
+            f"""\
                 Summary:
                 Model: {type(self.model).__name__}
                 Optimizer: {type(self.optimizer).__name__}
@@ -330,7 +362,8 @@ class TrainingRun:
                 {additional_info}
                 
                 Test accuracy: {self.test_acc:3.3f}
-                """)
+                """
+        )
         ax_text.text(0.1, 0.9, text, verticalalignment="top")
 
         ax_cm.set_title("Confusion Matrix")
@@ -339,7 +372,7 @@ class TrainingRun:
             index=[i for i in self.dataset.genres],
             columns=[i for i in self.dataset.genres],
         )
-        sn.heatmap(df_cm, annot=True, ax=ax_cm, cbar=False, fmt='d')
+        sn.heatmap(df_cm, annot=True, ax=ax_cm, cbar=False, fmt="d")
         ax_cm.tick_params(rotation=45)
         ax_cm.set_xticklabels(ax_cm.get_xticklabels(), ha="right")
         ax_cm.set_yticklabels(ax_cm.get_yticklabels(), va="top")
@@ -350,7 +383,7 @@ class TrainingRun:
         ax_acc.set(xlabel="epoch", ylabel="accuracy")
         ax_acc.plot(xx, self.train_accuracies, label="train")
         ax_acc.plot(xx, self.val_accuracies, label="validate")
-        ax_acc.axhline(y=max(self.val_accuracies), color="gray", linestyle='--')
+        ax_acc.axhline(y=max(self.val_accuracies), color="gray", linestyle="--")
         ax_acc.set_xlim(left=1, right=self.epochs)
         ax_acc.set_ylim(bottom=0, top=1)
         ax_acc.legend()
@@ -359,7 +392,7 @@ class TrainingRun:
         ax_loss.set(xlabel="epoch", ylabel="loss")
         ax_loss.plot(xx, self.train_losses, label="train")
         ax_loss.plot(xx, self.val_losses, label="validate")
-        ax_loss.axhline(y=min(self.val_losses), color="gray", linestyle='--')
+        ax_loss.axhline(y=min(self.val_losses), color="gray", linestyle="--")
         ax_loss.set_ylim(bottom=0)
         ax_loss.legend()
 
