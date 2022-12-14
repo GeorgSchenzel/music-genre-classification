@@ -9,6 +9,7 @@ theme:
 nav:
   - Project Summary: ./project_summary.md
   - Usage:
+      - Download: ./experiments/download.md
       - Convert: ./experiments/convert.md
       - Training: ./experiments/1_training.md
   - Experiments:

@@ -1,17 +1,21 @@
-# Welcome to MkDocs
+# music-genre-classification
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+A pipeline for training a neural network for music genre classification.
 
-## Commands
+## Requirements
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+- python3
+- ffmpeg (for converting files)
+- make (for ease of use)
 
-## Project layout
+## Installation
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+A makefile provides various utilities to install and run the program.
+
+`make venv` creates a virtual environment and installs all requirements
+
+`make docs-server` starts the docs server
+
+## Usage
+
+This project is best used as a pyhton package. This is demonstrated in the jupyter notebooks under `./experiments/`. The output of these notebooks can also be viewed on the docs page.
