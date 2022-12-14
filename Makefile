@@ -27,9 +27,11 @@ format: venv-dev-upgrade ## Format the code
 # ===================================================================
 
 docs: venv-dev-upgrade ## Create the documentation
+	jupyter nbconvert --output-dir="./docs/experiments" --to markdown "./experiments/*.ipynb"
 	./venv/bin/python -m mkdocs build
 
 docs-server: venv-dev-upgrade ## Start a Web server to serve the documentation
+	jupyter nbconvert --output-dir="./docs/experiments" --to markdown "./experiments/*.ipynb"
 	./venv/bin/python -m mkdocs serve
 
 release-note: ## Generate release note
