@@ -36,7 +36,8 @@ def create_spectrogram(sample_rate=16000, n_mels=128, win_length=1024, overlap=0
     the overlap is win_length - hop_length / win_length
 
     thus we can calculate the receptive field of the first layer by:
-        seconds = (1 + kernel_size) * overlap * win_length / sample_rate
+        seconds = win + n * hop / sample_rate
+                = win * (1 + n * (1 - overlap) / sample_rate
 
     a single bin covers win_length / sample_rate seconds of out data
 

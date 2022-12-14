@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 from typing import List
 
-import librosa as librosa
 import pandas as pd
 import seaborn as sb
 from matplotlib import pyplot as plt

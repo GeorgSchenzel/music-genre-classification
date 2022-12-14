@@ -19,12 +19,12 @@ from mgclass.utils import create_spectrogram, mp3_to_wav_location, sample_playli
 
 
 def some_experiment():
-    dry_run = False
-    data_shape = (128, 256)
+    dry_run = True
+    data_shape = (128, 128)
 
     dataset = MusicGenreDataset(
         data_dir=Path("/home/georg/Music/ADL/"),
-        preprocess=create_spectrogram(win_length=2048 * 4),
+        preprocess=create_spectrogram(win_length=1024),
         transform=create_crop(data_shape),
         file_transform=mp3_to_wav_location,
         dry_run=dry_run,
@@ -106,7 +106,7 @@ class TrainingRun:
             batch_size=self.batch_size,
             shuffle=True,
             num_workers=8,
-            prefetch_factor=4,
+            prefetch_factor=8,
             pin_memory=True,
             persistent_workers=True,
         )
@@ -116,27 +116,33 @@ class TrainingRun:
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=8,
+            prefetch_factor=8,
+            pin_memory=True,
+            persistent_workers=True,
         )
 
         self.test_loader = DataLoader(
-            self.test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=8
+            self.test_dataset,
+            batch_size=1,
+            shuffle=False,
+            num_workers=8,
+            prefetch_factor=2,
+            pin_memory=True
         )
 
         self.train_loader = RepeatedLoader(self.train_loader, self.repeat_count)
-        self.test_loader = RepeatedLoader(self.test_loader, self.repeat_count)
         self.val_loader = RepeatedLoader(self.val_loader, self.repeat_count)
 
     def _train(self):
         num_classes = self.dataset.num_classes
         train_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
         val_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
-        test_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
 
         print(f"Starting training for {self.epochs} epoch")
 
         pbar = tqdm(
             unit="epochs",
-            total=10,
+            total=self.epochs,
             leave=False,
             unit_scale=True
         )
@@ -194,27 +200,40 @@ class TrainingRun:
             # console output
             print(
                 f"Epoch {epoch + 1:3d}/{self.epochs}, "
-                f"train_loss: {self.train_losses[-1]:2.3f}, train_acc: {train_acc.compute():3.3f}, "
-                f"val_loss: {self.val_losses[-1]:2.3f}, val_acc: {val_acc.compute():3.3f}, "
+                f"train_loss: {self.train_losses[-1]:2.3f}, train_acc: {train_acc.compute():1.3f}, "
+                f"val_loss: {self.val_losses[-1]:2.3f}, val_acc: {val_acc.compute():1.3f}, "
                 f"in {epoch_timer.stop(False):2.2f}s"
             )
 
             train_acc.reset()
             val_acc.reset()
 
-        test_losses = []
+    def test(self):
+        num_classes = self.dataset.num_classes
+        test_acc = Accuracy("multiclass", num_classes=num_classes).to(self.device)
+
         y_pred = []
         y_true = []
+        test_losses = []
         cm = ConfusionMatrix("multiclass", num_classes=self.dataset.num_classes).to(
             self.device
         )
+
+        # remove the augmentation for test
+        self.dataset.transform = None
 
         for data, label in self.test_loader:
             # Move to device
             data = data.to(self.device)
             label = label.to(self.device)
 
-            pred = self.model(data)
+            count = 0
+            pred = torch.zeros((1, num_classes)).to(self.device)
+            for i in range(0, data.shape[3] - 128, 128):
+                count += 1
+                pred += self.model(data[:, :, :, i:i + 128])
+
+            pred /= count
 
             test_loss = self.loss_fn(pred, label)
             test_losses.append(test_loss.item())
@@ -228,7 +247,7 @@ class TrainingRun:
         self.confusion_matrix = cm.compute().cpu().numpy()
 
         print(
-            f"test_loss: {np.array(test_losses).mean()}, test_acc: {test_acc.compute()}"
+            f"test_loss: {np.array(test_losses).mean():2.3f}, test_acc: {test_acc.compute():3.3f}"
         )
 
     def plot(self, title="Training Run"):
@@ -241,7 +260,7 @@ class TrainingRun:
         ax1.set(xlabel="epoch", ylabel="accuracy")
         ax1.plot(xx, self.train_accuracies, label="train")
         ax1.plot(xx, self.val_accuracies, label="validate")
-        ax1.set_ylim(bottom=0)
+        ax1.set_ylim(bottom=0, top=1)
 
         ax2.set_title("Loss")
         ax2.set(xlabel="epoch", ylabel="loss")
