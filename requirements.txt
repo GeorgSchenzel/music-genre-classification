@@ -9,3 +9,5 @@ torchmetrics
 torchinfo
 librosa
 seaborn
+
+-e ../spotdj
