@@ -7,10 +7,18 @@ theme:
     - navigation.top
 
 nav:
-  - Data: ./experiments/0_data.md
-  - Training: ./experiments/1_training.md
-  - MusicRecnet: ./experiments/2_musicrecnet_sgd.md
-  - Experiment: ./experiments/3_training.md
+  - Project Summary: ./project_summary.md
+  - Usage:
+      - Convert: ./experiments/convert.md
+      - Training: ./experiments/1_training.md
+  - Experiments:
+      - Data: ./experiments/0_data.md
+      - Training Dry Run: ./experiments/1_training.md
+      - MusicRecNet: ./experiments/2_musicrecnet_sgd.md
+      - ResNet: ./experiments/2_resnet_decay.md
+      - MgcNet: ./experiments/2_mynet.md
+      - Full Experiment: ./experiments/training.md
+      - Spectrogram: ./experiments/spectrogram.md
 
 plugins:
   mkdocs-jupyter:

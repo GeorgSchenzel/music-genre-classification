@@ -3,3 +3,4 @@ autoflake
 mkdocs-material
 mypy
 mkdocs-jupyter
+jupyter
