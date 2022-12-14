@@ -8,7 +8,7 @@ sample_playlist_to_genre = {
     "37i9dQZF1DWTU3Zl0elDUa": "House Classic",
     "6vDGVr652ztNWKZuHvsFvx": "Deep House",
     "068WHS0zOWsqvn2uIBYb5D": "DnB",
-    "0ZOspi3XrshQrmVzmlQFx6": "Liquid DDnB ",
+    "0ZOspi3XrshQrmVzmlQFx6": "Liquid DnB",
     "4aKW9X7zIju4ijCSL7MR7T": "Future Rave",
     "6yyFZPfg3pU3d3IHNpaNKI": "Tech House",
     "37i9dQZF1DWUbycBFSWTh7": "Deep House",
@@ -16,7 +16,10 @@ sample_playlist_to_genre = {
     "27vbShxLFuNJ3d2Z0u67LT": "Future Rave",
     "0R29couUMdcX6JUDGFFapa": "Psytrance",
     "7D25GYqznqpZJP1GCjMtF1": "Psytrance",
-    "3ZG1CAQ811cCiSce3J0uz5": "Psytrance"
+    "3ZG1CAQ811cCiSce3J0uz5": "Psytrance",
+    "502B3oSddAW7czuMMvxITT": "Future Rave",
+    "5NlU4dHwuK9JrhpuwYGllf": "Liquid DnB",
+    "7mwPa6HjqoiUrsk3C2Hitk": "Techno"
 }
 
 
@@ -24,7 +27,7 @@ def mp3_to_wav_location(mp3: Path, subfolder="wav_16k") -> Path:
     return mp3.parent / subfolder / mp3.with_suffix(".wav").name
 
 
-def create_spectrogram(sample_rate=16000, n_mels=128, win_length=2048, overlap=0.75):
+def create_spectrogram(sample_rate=16000, n_mels=128, win_length=1024, overlap=0.75):
     """
     win_length defines the width of each chunk in terms of samples
 

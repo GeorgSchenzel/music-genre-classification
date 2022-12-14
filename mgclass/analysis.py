@@ -2,11 +2,28 @@ import json
 from pathlib import Path
 from typing import List
 
+import librosa as librosa
 import pandas as pd
+import seaborn as sb
 from matplotlib import pyplot as plt
 import mutagen
 
 from mgclass import MusicGenreDataset
+
+
+def plot_spectrogram(specgram, title=None, ylabel="freq_bin"):
+    fig, axs = plt.subplots(1, 1)
+    axs.set_title(title or "Spectrogram (db)")
+    axs.set_ylabel(ylabel)
+    axs.set_xlabel("frame")
+    im = axs.imshow(specgram, origin="lower", aspect="auto")
+    fig.colorbar(im, ax=axs)
+    plt.show(block=False)
+
+
+def plot_spectrogram2(data):
+    sb.heatmap(data)
+    plt.show()
 
 
 def plot_frequency_chart(df, title: str, rot=True):

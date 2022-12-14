@@ -101,7 +101,6 @@ class MusicGenreDataset(Dataset):
         files_per_class = [[] for i in range(self.num_classes)]
         genre_to_label = {genre: i for i, genre in enumerate(self.genres)}
 
-        duplicate = 0
         for i, (playlist_id, genre) in enumerate(playlist_to_genre.items()):
             genre = playlist_to_genre[playlist_id]
             playlist = self.playlist_data[playlist_id]
@@ -115,15 +114,27 @@ class MusicGenreDataset(Dataset):
                     if self.file_transform is not None:
                         song_file = self.file_transform(song_file)
 
+                    if not song_file.exists():
+                        continue
+
                     if song_file in files_per_class[label]:
-                        duplicate += 1
                         continue
 
                     files_per_class[label].append(song_file)
 
+        # show duplicates
+        for i, files1 in enumerate(files_per_class):
+            for j, files2 in enumerate(files_per_class):
+                if i >= j:
+                    continue
+
+                duplicates = len([f for f in files1 if f in files2])
+                if duplicates > 0:
+                    print(f"Dups for {i}-{j}: {duplicates:3d}")
+
         all_files, labels = self.flatten_file_array(files_per_class)
 
-        print(f"Preprocessing complete, found {duplicate} duplicates")
+        print(f"Preprocessing complete")
 
         data = self.files_to_data(all_files)
 
