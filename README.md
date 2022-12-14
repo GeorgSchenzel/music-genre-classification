@@ -19,3 +19,8 @@ A makefile provides various utilities to install and run the program.
 ## Usage
 
 This project is best used as a pyhton package. This is demonstrated in the jupyter notebooks under `./experiments/`. The output of these notebooks can also be viewed on the docs page.
+
+## Documentation
+
+Run `make docs-server` and access the local server to read my documentation and project summary.
+If this should somehow fail, then the markdown files can still be seen under `./docs/project_summary.md` and the jupyter notebooks under `./experiments/` show all my experiments.
