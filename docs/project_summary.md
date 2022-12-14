@@ -49,14 +49,14 @@ Three different models were employed:
 
 ## Training
 
-The training was done in jupyter notebooks for better presentation. [Here](./experiments/1_training.md) you can see the baisc program usage in a dry-run example. Some of my experiments include a comparison between [adam](./experiments/2_musicrecnet_adam.md) and [sgd](./experiments/2_musicrecnet_sgd.md) optimizers. Where sgd had a slight advantage. There are also training runs with [ResNet](./experiments/2_resnet.md), [ResNet + weight decay](./experiments/2_resnet_decay.md) and [MgcNet](./experiments/2_mynet.md). Then I performed some [bigger training](./experiments/) using more epochs and augmentation and parameters from my previous finding. Mainly weight decay was added.
+The training was done in jupyter notebooks for better presentation. [Here](./experiments/1_training.md) you can see the baisc program usage in a dry-run example. Some of my experiments include a comparison between [adam](./experiments/2_musicrecnet_adam.md) and [sgd](./experiments/2_musicrecnet_sgd.md) optimizers. Where sgd had a slight advantage. There are also training runs with [ResNet](./experiments/2_resnet.md), [ResNet + weight decay](./experiments/2_resnet_decay.md) and [MgcNet](./experiments/2_mynet.md). Then I performed some [bigger training](./experiments/3_training.md) using more epochs and augmentation and parameters from my previous finding. Mainly weight decay was added. Finally, I ran a 100 epoch [training](./experiments/final.md) using larger weight decay and lower learning rate on my own network where I achieved a 82% accuracy with very little overfitting.
 
 ## Results
 
 The results are better than expected. The best test accuracy achieved was 84.4% using my own model. The test accuracy is determined by sampling whole songs and getting an average of the prediction. Thus achieving a better accuracy than in training or validation as here the network only sees a few seconds of the song.
 
-![Best run](./experiments/2_mynet_files/2_mynet_3_2.png)
-The results of the best run. In the confusion matrix you can see a good representation of the models performance with only a few outliers. "DnB" and "Liqduid DnB" were deliberately chosen as two very similar genres, mainly differing in energy but having very similar drum patterns and bpm. Between those two classes the model hat the most trouble classifying but still got the majority correct.
+![Best run](./experiments/final_files/final_7_2.png)
+The results of the best run. In the confusion matrix you can see a good representation of the models performance with only a few outliers. "DnB" and "Liqduid DnB" were deliberately chosen as two very similar genres, mainly differing in energy but having very similar drum patterns and bpm. Between those two classes the model hat the most trouble classifying but still got the majority correct. This run used a weight decay of 0.005 and a learning rate of 0.0001.
 
 ## Conclusion
 

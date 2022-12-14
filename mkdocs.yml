@@ -20,6 +20,7 @@ nav:
       - MgcNet: ./experiments/2_mynet.md
       - Full Experiment: ./experiments/training.md
       - Spectrogram: ./experiments/spectrogram.md
+      - Final: ./experiments/final.md
 
 plugins:
   mkdocs-jupyter:
