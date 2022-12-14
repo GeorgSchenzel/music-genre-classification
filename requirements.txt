@@ -10,4 +10,4 @@ torchinfo
 librosa
 seaborn
 
--e ../spotdj
+git+ssh://git@github.com/GeorgSchenzel/spotdj.git@adl22

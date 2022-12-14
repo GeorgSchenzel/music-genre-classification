@@ -1,5 +1,5 @@
 venv-python: ## Install Python 3 venv
-	python3 -m venv venv
+	python -m venv venv
 
 venv-dev: venv-python ## Install Python 3 dev dependencies
 	./venv/bin/pip install -r dev-requirements.txt
