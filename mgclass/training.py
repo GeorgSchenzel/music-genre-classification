@@ -180,7 +180,8 @@ class TrainingRun:
             if epoch > 0:
                 pbar.set_description(desc=f"Epoch {epoch + 1:3d}/{self.epochs}, "
                                           f"train_acc: {self.train_accuracies[-1]:1.3f}, "
-                                          f"val_acc: {self.val_accuracies[-1]:1.3f}")
+                                          f"val_acc: {self.val_accuracies[-1]:1.3f}, "
+                                          f"patience: {patience_counter}")
 
             epoch_timer = Timer().start()
 
