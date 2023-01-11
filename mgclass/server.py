@@ -56,9 +56,13 @@ def inference(data):
 async def main(args):
     app = Flask(__name__, static_url_path="", static_folder="../web")
 
-    @app.route('/')
+    @app.route("/")
     def root():
         return current_app.send_static_file('index.html')
+
+    @app.route("/genres", methods=["GET"])
+    def classes():
+        return jsonify(class_labels)
 
     @app.route("/predict", methods=["POST"])
     def predict():

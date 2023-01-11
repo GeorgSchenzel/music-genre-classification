@@ -6,7 +6,7 @@ const chart = new Chart(chartCanvas, {
     type: 'bar',
     data: {
         labels: [],
-        datasets: []
+        datasets: [{}]
     },
     options: {
         scales: {
@@ -37,15 +37,21 @@ const chart = new Chart(chartCanvas, {
 });
 
 const updateChart = (data) => {
-    chart.data.labels =  Object.keys(data)
+    chart.data.labels = Object.keys(data)
     chart.data.datasets[0] = {
         data: Object.values(data),
-        borderWidth: 0
     };
     chart.update();
 }
 
+const resetChart = () => {
+    chart.data.datasets[0].data = Array(chart.data.labels.length).fill(0);
+    chart.update();
+}
+
 const onchange = () => {
+    resetChart();
+
     const formData = new FormData();
     formData.append('file', input.files[0]);
 
@@ -66,3 +72,10 @@ const onchange = () => {
 
 input.addEventListener('change', () => onchange(), false);
 
+const genres = document.getElementById("supported-genres");
+fetch("/genres").then(
+    response => response.json()
+).then(
+    success => {
+        genres.textContent = success.join(", ");
+    });
