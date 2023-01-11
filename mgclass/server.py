@@ -1,6 +1,6 @@
 import torch
 import torchaudio
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, current_app
 from miniaudio import SampleFormat, decode
 
 from mgclass import networks
@@ -54,11 +54,15 @@ def inference(data):
 
 
 async def main(args):
-    app = Flask(__name__, static_url_path='/web')
+    app = Flask(__name__, static_url_path="", static_folder="../web")
 
-    @app.route('/predict', methods=['POST'])
+    @app.route('/')
+    def root():
+        return current_app.send_static_file('index.html')
+
+    @app.route("/predict", methods=["POST"])
     def predict():
-        file = request.files['file']
+        file = request.files["file"]
         audio_bytes = file.read()
         data = create_input_from_bytes(audio_bytes)
         best_id, all_preds = inference(data)
