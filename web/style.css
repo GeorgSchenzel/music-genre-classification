@@ -1,0 +1,12 @@
+label[role="button"] {
+    width: 100%;
+}
+
+main {
+    text-align: center;
+}
+
+#result {
+    margin-left: auto;
+    font-size: 4rem;
+}

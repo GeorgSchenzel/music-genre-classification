@@ -1,13 +1,29 @@
 <head>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="pico.classless.min.css">
+    <link rel="stylesheet" href="style.css">
     <script defer src="index.js"></script>
 </head>
 <body>
-    <h1>Music Genre Classification</h1>
-    <p>Supported genres: <span id="supported-genres"></span></p>
+<main>
+    <hgroup>
+        <h1>Music Genre Classification</h1>
+        <h2>Supported genres: <span id="supported-genres"></span></h2>
+    </hgroup>
+
+    <label id="upload-button" role="button" for="song-file-input">Upload Song</label>
     <input type="file"
-       id="song-file-input" name="file"
-       accept="audio/*">
-    <div id="result"></div>
-    <canvas id="result-chart"></canvas>
+           id="song-file-input" name="file"
+           accept="audio/*"
+           style="display:none">
+
+    <article>
+        <p id="file-name"></p>
+        <p>
+            <b id="result"></b>
+        </p>
+        <canvas id="result-chart"></canvas>
+    </article>
+</main>
+
 </body>
