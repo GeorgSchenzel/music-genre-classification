@@ -9,5 +9,6 @@ torchmetrics
 torchinfo
 librosa
 seaborn
+flask
 
 git+ssh://git@github.com/GeorgSchenzel/spotdj.git@adl22

@@ -1,7 +1,7 @@
 import argparse
 import asyncio
 
-from mgclass import analysis, training, raw_data
+from mgclass import analysis, training, raw_data, server
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -15,6 +15,7 @@ def create_parser() -> argparse.ArgumentParser:
     add_data_analyzer_subparser(subparsers)
     add_dataset_generator_subparser(subparsers)
     add_converter_subparser(subparsers)
+    add_serve_subparser(subparsers)
 
     return parser
 
@@ -48,6 +49,13 @@ def add_data_analyzer_subparser(subparsers):
 
     parser.set_defaults(func=analysis.main)
     parser.add_argument("path", help="the path to the 'spotdj.json' file")
+
+
+def add_serve_subparser(subparsers):
+    parser = subparsers.add_parser("serve", help="create an endpoint for interference")
+
+    parser.set_defaults(func=server.main)
+    parser.add_argument("model", help="the trained model to use")
 
 
 if __name__ == "__main__":

@@ -197,6 +197,8 @@ class MusicGenreDataset(Dataset):
         for d in data:
             stats.update(d)
 
+        print(f"mean: {stats.mean}, std: {stats.std}")
+
         # normalizing the data across the full dataset imrpoved the models performance a lot
         for i, d in enumerate(data):
             data[i] = (d - stats.mean) / stats.std
