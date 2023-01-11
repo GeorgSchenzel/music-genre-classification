@@ -4,9 +4,15 @@ label[role="button"] {
 
 main {
     text-align: center;
+    padding-bottom: 0;
 }
 
 #result {
     margin-left: auto;
     font-size: 4rem;
+}
+
+#result-chart {
+    max-height: 300px;
+
 }
