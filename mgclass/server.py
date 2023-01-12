@@ -2,14 +2,17 @@ import torch
 import torchaudio
 from flask import Flask, jsonify, request, current_app
 from miniaudio import SampleFormat, decode
+import urllib.request
+from io import BytesIO
 
 from mgclass import networks
 from mgclass.utils import create_spectrogram
 
+print("Loading model")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = networks.MgcNet(8)
-model.load_state_dict(torch.load("../experiments/out/MgcNet-1024.pt", map_location=device)["model_state_dict"]
-                      )
+data = urllib.request.urlopen("https://github.com/GeorgSchenzel/music-genre-classification/releases/download/model-v1/MgcNet.pt")
+model.load_state_dict(torch.load(BytesIO(data.read()), map_location=device)["model_state_dict"])
 model.eval()
 
 class_labels = ["Deep House",
@@ -23,6 +26,8 @@ class_labels = ["Deep House",
 
 mean = 31.1943
 std = 293.4358
+
+print("Finished loading model")
 
 
 def create_input_from_bytes(audio_bytes):
