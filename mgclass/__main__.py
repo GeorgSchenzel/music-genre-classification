@@ -55,7 +55,6 @@ def add_serve_subparser(subparsers):
     parser = subparsers.add_parser("serve", help="create an endpoint for interference")
 
     parser.set_defaults(func=server.main)
-    #parser.add_argument("model", help="the trained model to use")
 
 
 if __name__ == "__main__":

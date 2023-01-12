@@ -1,5 +1,4 @@
 import torch
-import torchaudio
 from flask import Flask, jsonify, request, current_app
 from miniaudio import SampleFormat, decode
 import urllib.request
@@ -8,34 +7,45 @@ from io import BytesIO
 from mgclass import networks
 from mgclass.utils import create_spectrogram
 
-print("Loading model")
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = networks.MgcNet(8)
-data = urllib.request.urlopen("https://github.com/GeorgSchenzel/music-genre-classification/releases/download/model-v1/MgcNet.pt")
-model.load_state_dict(torch.load(BytesIO(data.read()), map_location=device)["model_state_dict"])
-model.eval()
+model_url = "https://github.com/GeorgSchenzel/music-genre-classification/releases/download/model-v1/MgcNet.pt"
 
-class_labels = ["Deep House",
-                "DnB",
-                "Future Rave",
-                "House Classic",
-                "Liquid DnB",
-                "Psytrance",
-                "Tech House",
-                "Techno"]
-
+# TODO: on training export these to json and also store in the github release
 mean = 31.1943
 std = 293.4358
+class_labels = [
+    "Deep House",
+    "DnB",
+    "Future Rave",
+    "House Classic",
+    "Liquid DnB",
+    "Psytrance",
+    "Tech House",
+    "Techno",
+]
 
-print("Finished loading model")
+
+def load_model():
+    print("Loading model")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = networks.MgcNet(8)
+    data = urllib.request.urlopen(model_url)
+    model.load_state_dict(
+        torch.load(BytesIO(data.read()), map_location=device)["model_state_dict"]
+    )
+    model.eval()
+    print("Finished loading model")
+
+    return model
 
 
 def create_input_from_bytes(audio_bytes):
-    decoded_audio = decode(audio_bytes, nchannels=1, sample_rate=16000, output_format=SampleFormat.SIGNED32)
+    decoded_audio = decode(
+        audio_bytes, nchannels=1, sample_rate=16000, output_format=SampleFormat.SIGNED32
+    )
     data = torch.FloatTensor(decoded_audio.samples)[None, None, :]
 
     # normalize 32 integer bit audio by dividing by 2147483648 (or short hand 1 << 31)
-    data /= (1 << 31)
+    data /= 1 << 31
 
     data = create_spectrogram(win_length=2048)(data)
     data = (data - mean) / std
@@ -43,7 +53,7 @@ def create_input_from_bytes(audio_bytes):
     return data
 
 
-def inference(data):
+def inference(data, model):
     num_classes = 8
 
     count = 0
@@ -51,7 +61,7 @@ def inference(data):
 
     for i in range(0, data.shape[3] - 128, 128):
         count += 1
-        pred += model(data[:, :, :, i: i + 128])
+        pred += model(data[:, :, :, i : i + 128])
 
     pred /= count
 
@@ -61,11 +71,12 @@ def inference(data):
 
 
 def create_app():
+    model = load_model()
     app = Flask(__name__, static_url_path="", static_folder="../web")
 
     @app.route("/")
     def root():
-        return current_app.send_static_file('index.html')
+        return current_app.send_static_file("index.html")
 
     @app.route("/genres", methods=["GET"])
     def classes():
@@ -76,11 +87,17 @@ def create_app():
         file = request.files["file"]
         audio_bytes = file.read()
         data = create_input_from_bytes(audio_bytes)
-        best_id, all_preds = inference(data)
+        best_id, all_preds = inference(data, model)
 
         all_preds = {class_labels[i]: all_preds[i] for i in range(len(all_preds))}
 
-        return jsonify({"class_id": best_id, "class_name": class_labels[best_id], "all_preds": all_preds})
+        return jsonify(
+            {
+                "class_id": best_id,
+                "class_name": class_labels[best_id],
+                "all_preds": all_preds,
+            }
+        )
 
     return app
 
@@ -88,4 +105,3 @@ def create_app():
 async def main(args):
     app = create_app()
     app.run(debug=True, use_reloader=True)
-
