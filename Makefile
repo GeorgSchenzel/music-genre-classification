@@ -45,3 +45,18 @@ release-note: ## Generate release note
 
 run:
 	./venv/bin/python -m mgclass
+
+serve:
+	./gunicorn.sh
+
+serve-dev:
+	cd mgclass && \
+	  ../venv/bin/python -m mgclass serve
+
+
+# ===================================================================
+# Docker
+# ===================================================================
+
+docker-build:
+	docker build -t mgclass .

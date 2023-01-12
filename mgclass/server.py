@@ -6,8 +6,10 @@ from miniaudio import SampleFormat, decode
 from mgclass import networks
 from mgclass.utils import create_spectrogram
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = networks.MgcNet(8)
-model.load_state_dict(torch.load("./experiments/out/MgcNet-1024.pt")["model_state_dict"])
+model.load_state_dict(torch.load("../experiments/out/MgcNet-1024.pt", map_location=device)["model_state_dict"]
+                      )
 model.eval()
 
 class_labels = ["Deep House",
@@ -53,7 +55,7 @@ def inference(data):
     return y_hat.item(), pred[0].tolist()
 
 
-async def main(args):
+def create_app():
     app = Flask(__name__, static_url_path="", static_folder="../web")
 
     @app.route("/")
@@ -75,6 +77,10 @@ async def main(args):
 
         return jsonify({"class_id": best_id, "class_name": class_labels[best_id], "all_preds": all_preds})
 
-    app.run(debug=True, use_reloader=True)
+    return app
 
+
+async def main(args):
+    app = create_app()
+    app.run(debug=True, use_reloader=True)
 

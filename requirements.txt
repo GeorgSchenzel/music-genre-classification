@@ -10,5 +10,8 @@ torchinfo
 librosa
 seaborn
 flask
+gunicorn
+miniaudio
+soundfile
 
-git+ssh://git@github.com/GeorgSchenzel/spotdj.git@adl22
+git+https://github.com/GeorgSchenzel/spotdj.git@00c2b3b6c4d285372f29c5af4382cee1280cad80
