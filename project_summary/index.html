@@ -1,0 +1,739 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../final_report/">
+      
+      
+        <link rel="next" href="../experiments/download/">
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.5">
+    
+    
+      
+        <title>Project Summary - Music Genre Classification</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="" data-md-color-accent="">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#project-summary" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Music Genre Classification" class="md-header__button md-logo" aria-label="Music Genre Classification" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Music Genre Classification
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Project Summary
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Music Genre Classification" class="md-nav__button md-logo" aria-label="Music Genre Classification" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Music Genre Classification
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../final_report/" class="md-nav__link">
+        Final Report
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Project Summary
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Project Summary
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    Introduction
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#targets" class="md-nav__link">
+    Targets
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-aquisition" class="md-nav__link">
+    Data aquisition
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-pipeline" class="md-nav__link">
+    The pipeline
+  </a>
+  
+    <nav class="md-nav" aria-label="The pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dataset" class="md-nav__link">
+    Dataset
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#models" class="md-nav__link">
+    Models
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#training" class="md-nav__link">
+    Training
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    Results
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    Conclusion
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_3" type="checkbox" id="__nav_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3" tabindex="0" aria-expanded="false">
+          Usage
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Usage" data-md-level="1">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          Usage
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experiments/download/" class="md-nav__link">
+        Download
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experiments/convert/" class="md-nav__link">
+        Convert
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experiments/1_training/" class="md-nav__link">
+        Training
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="false">
+          Experiments
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Experiments" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          Experiments
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experiments/0_data/" class="md-nav__link">
+        Data
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experiments/1_training/" class="md-nav__link">
+        Training Dry Run
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experiments/2_musicrecnet_sgd/" class="md-nav__link">
+        MusicRecNet
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experiments/2_resnet_decay/" class="md-nav__link">
+        ResNet
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experiments/2_mynet/" class="md-nav__link">
+        MgcNet
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experiments/training/" class="md-nav__link">
+        Full Experiment
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experiments/spectrogram/" class="md-nav__link">
+        Spectrogram
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experiments/final/" class="md-nav__link">
+        Final
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    Introduction
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#targets" class="md-nav__link">
+    Targets
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-aquisition" class="md-nav__link">
+    Data aquisition
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-pipeline" class="md-nav__link">
+    The pipeline
+  </a>
+  
+    <nav class="md-nav" aria-label="The pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dataset" class="md-nav__link">
+    Dataset
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#models" class="md-nav__link">
+    Models
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#training" class="md-nav__link">
+    Training
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    Results
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    Conclusion
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="project-summary">Project Summary</h1>
+<h2 id="introduction">Introduction</h2>
+<p>Labeling a song with a correct genre is an inherntly difficult problem. Notably because most often there is no correct answer. Genres blend into each other, there is no clear line of separation and often multiple answers seem to fit. Especially if the genres are closely related subgenres.</p>
+<p>This led to the idea of using multiple genres for describing a single song to sortof create a spectrum of where the song lie on. Then I would employ deep learning to create a model for classifying songs by a set of gernes.</p>
+<p>This proved to be a lot more difficult than expected. Initially I found rateyourmusic.com, a site where users rate music and which often lists multiple genres for a song. Perfect. So I started hacking...</p>
+<h2 id="targets">Targets</h2>
+<p>Elbir, A., &amp; Aydin, N. [1] present a network for music genre classification. They achieved an accuarcy of 81.8% using a CNN and even 97.6% employing an additional SVM on a feature vector from one of the dense layers. I will only do use a CNN for classification. As my choice of genre cover a smaller spectrum of genres that are more simiar to each other. Thus I was aiming for a 60% accuracy.</p>
+<h2 id="data-aquisition">Data aquisition</h2>
+<p>I already had a side project for creating a music collection for djaying. It works by reading in a spotify playlist, searching for the songs on youtube, giving me a preview and then downloading and converting them. So I usesd this tool for my dataset creation, downloading was no problem and already proven working (a bit unstable but after this project it improved a lot). I extended it to also get metadata from rateyourmusic.com and store it in a simple <code>.json</code> file. This is where I was met with the biggest hurdle. There was no API, luckily someone wrote a scrapper for it. While getting ratelimited a lot it worked fine for about 300 songs. When I decided to try a different approch to reduce rate limiting I got instantly IP banned.</p>
+<p>Analysing what I had so far it was clear that this wasn't a good route anyway.</p>
+<p><img alt="RYM Genres" src="../experiments/0_data_files/0_data_3_1.png" />
+<img alt="Spotify Genres" src="../experiments/0_data_files/0_data_3_3.png" /></p>
+<p>Only a small fraction of songs even had genres. Also spotify did not have a very good selection of genres. So I shifted to the next idea: Get a few genre specific playlists and assign the genres from there. This way I could easiyl create a dataset of 2096 songs.</p>
+<p><img alt="RYM Genres" src="../experiments/0_data_files/0_data_7_3.png" /></p>
+<p>The quality of my dataset now depends on whoever created these playlists. But skipping through a the songs it seemed accurate (at least as accurate as you even can describe genres).</p>
+<h2 id="the-pipeline">The pipeline</h2>
+<p>In <code>mglcass</code> I implemented a robust pipeline for colellecting and processing the raw data, creating datasets and training and evaulating different networks.</p>
+<h3 id="dataset">Dataset</h3>
+<p>The dataset contains 2096 songs of 8 genres. For performance reasosns the songs have been converted to 16k wav files. Reading straight from the mp3 files was a huge bottleneck. From the waveforms I create mel spectrograms of the whole songs as a preprocessing step and store all of them in memory.</p>
+<p>Then a 128x128 image is cropped from the whole spectrogram. Note that the height contains all the frequency bins so only the time dimension is cropped. Using a width of 128 gives, depending one the spectrogram parameters, a window of about 2 to 8 seconds when choosing reasonable values.</p>
+<p>Using this augmentation step we can increase the effective dataset size by a constant factor. For that the whole dataset is iterated over multiple times in a single epoch.</p>
+<h3 id="models">Models</h3>
+<p>Three different models were employed:</p>
+<p><em>MusicRecNet:</em> The model from [1] using 3 convoultional layers, 2 fully connected layers and dropout layers inbetween.</p>
+<p><em>ResNet18:</em> As a comparison.</p>
+<p><em>MgcNet:</em> My own adaption of <code>MusicRecNet</code> with more convultion layers added. I created this to see what happens with a slightly deeper network.</p>
+<h2 id="training">Training</h2>
+<p>The training was done in jupyter notebooks for better presentation. <a href="../experiments/1_training/">Here</a> you can see the baisc program usage in a dry-run example. Some of my experiments include a comparison between <a href="../experiments/2_musicrecnet_adam/">adam</a> and <a href="../experiments/2_musicrecnet_sgd/">sgd</a> optimizers. Where sgd had a slight advantage. There are also training runs with <a href="../experiments/2_resnet/">ResNet</a>, <a href="../experiments/2_resnet_decay/">ResNet + weight decay</a> and <a href="../experiments/2_mynet/">MgcNet</a>. Then I performed some <a href="./experiments/3_training.md">bigger training</a> using more epochs and augmentation and parameters from my previous finding. Mainly weight decay was added. Finally, I ran a 100 epoch <a href="../experiments/final/">training</a> using larger weight decay and lower learning rate on my own network where I achieved a 82% accuracy with very little overfitting.</p>
+<h2 id="results">Results</h2>
+<p>The results are better than expected. The best test accuracy achieved was 84.4% using my own model. The test accuracy is determined by sampling whole songs and getting an average of the prediction. Thus achieving a better accuracy than in training or validation as here the network only sees a few seconds of the song.</p>
+<p><img alt="Best run" src="../experiments/final_files/final_7_2.png" />
+The results of the best run. In the confusion matrix you can see a good representation of the models performance with only a few outliers. "DnB" and "Liqduid DnB" were deliberately chosen as two very similar genres, mainly differing in energy but having very similar drum patterns and bpm. Between those two classes the model hat the most trouble classifying but still got the majority correct. This run used a weight decay of 0.005 and a learning rate of 0.0001.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>As the creation of a big and accurate dataset proves to be a difficult task, maybe looking into unsuperviced approaches for clustering songs by genre might be an interesting approach to look into.</p>
+<p>Another approach I might explore in the future would be to try sampling a much greater number of playlist allowing for finding multiple labels for individual songs.</p>
+<h1 id="references">References</h1>
+<p>[1] Elbir, A., &amp; Aydin, N. (2020). Music genre classification and music recommendation by using deep learning. <em>Electronics Letters</em>, <em>56</em>(12), 627-629.</p>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+          <a href="#" class="md-top md-icon" data-md-component="top" hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+            Back to top
+          </a>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.top"], "search": "../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+        <script src="../javascripts/extra.js"></script>
+      
+    
+  </body>
+</html>
