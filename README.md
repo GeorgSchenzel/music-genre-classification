@@ -1,6 +1,15 @@
-# music-genre-classification
+# Music Genre Classification
 
 A pipeline for training a neural network for music genre classification.
+
+## Docker
+
+You can run the application using docker:
+
+```shell
+$ docker pull ghcr.io/georgschenzel/music-genre-classification:latest
+$ docker run -d -p 8000:8000 ghcr.io/georgschenzel/music-genre-classification:latest
+```
 
 ## Requirements
 
