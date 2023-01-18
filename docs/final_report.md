@@ -12,11 +12,9 @@ However one major problem with this data source was there was is API. Luckily so
 
 Analysing what I had so far it was clear that this wasn't a good route anyway. Only a small fraction of songs even had genres. 
 
-![RYM Genres](./experiments/0_data_files/0_data_3_1.png)
-
 ## Solution
 
-The genre information by the spotify api was also not very good. The genres were too generic for my task. So I decided to get the genre data from genre-specific playlists the song appear in. I did that by selecting 17 playlists that each contains songs of a single genre and then labeling each song by that genre.
+The genre information by the spotify api was also not very good. The genres were too generic for my task. So I decided to get the genre data from genre-specific playlists the songs appear in. I did that by selecting 17 playlists that each contain songs of a single genre and then labeling each song by that genre.
 
 The downloading of songs was automated by a tool I wrote that searches for and then downloads each song on YouTube.
 
@@ -50,7 +48,7 @@ The results are better than expected. The best test accuracy achieved was 84.4%.
 
 ![Best run](./experiments/final_files/final_7_2.png)
 
-The results of the best run. In the confusion matrix you can see a good representation of the model's performance with only a few outliers. "DnB" and "Liquid DnB" were deliberately chosen as two very similar genres, mainly differing in energy but having very similar drum patterns and bpm. Between these classes the model had the most trouble classifying correctly, but still got the majority correct. A weight decay of 0.005 and a learning rate of 0.0001 was used.
+The results of the best run. In the confusion matrix you can see a good representation of the model's performance with only a few outliers. "DnB" and "Liquid DnB" were deliberately chosen as two very similar genres, mainly differing in energy but having very similar drum patterns and bpm. The model hat no problem differentiating between them. A weight decay of 0.005 and a learning rate of 0.0001 was used.
 
 ## Takeaways
 - SGD performed slightly better then adam
