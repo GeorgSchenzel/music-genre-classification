@@ -35,6 +35,12 @@ The dataset contains 1280 songs in 8 different genres. As an augmentation step o
 In each epoch each song is sampled multiple times, effectively increasing the dataset size.
 
 ### Demo
+
+<video autoplay loop muted>
+  <source src="/mgc-demo.webm" />
+  Your browser does not support the video tag.
+</video>
+
 The demo app is a simple site build with html, js and picocss. The backend is built on flask mostly using existing code for processing songs and executing the model. The model is downloaded from a github release. Also a docker image is built using github actions and available at `ghcr.io/georgschenzel/music-genre-classification:latest`. To try it for yourself simply do:
 ```shell
 $ docker pull ghcr.io/georgschenzel/music-genre-classification:latest
