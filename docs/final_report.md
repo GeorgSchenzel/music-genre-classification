@@ -37,7 +37,7 @@ In each epoch each song is sampled multiple times, effectively increasing the da
 ### Demo
 
 <video autoplay loop muted>
-  <source src="/mgc-demo.webm" />
+  <source src="https://georgschenzel.github.io/music-genre-classification/mgc-demo.webm" />
   Your browser does not support the video tag.
 </video>
 
