@@ -2,6 +2,8 @@
 
 A pipeline for training a neural network for music genre classification.
 
+[mgc-demo.webm](https://user-images.githubusercontent.com/12039784/213253356-6ee5f71a-aa3e-467f-964f-4cf5ea0fd722.webm)
+
 ## Docker
 
 You can run the application using docker:
